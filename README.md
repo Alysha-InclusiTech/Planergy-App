@@ -1,57 +1,55 @@
-# Welcome to your Expo app 👋
+# Planergy
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An energy-aware daily planner. Instead of scheduling tasks by time alone,
+Planergy asks how much mental/physical energy you have for the day and
+how much each task takes, then builds a realistic schedule around that
+capacity rather than an idealized one.
 
-## Get started
+## How it works
 
-1. Install dependencies
+1. **Sign in** — Supabase-backed auth.
+2. **Questions** — set your available work hours, energy level for the
+   day, and preferred communication mode.
+3. **Add tasks** — type or dictate tasks (voice input via
+   `expo-speech-recognition`).
+4. **Prioritize** — mark priority, assign a duration and energy cost to
+   each task.
+5. **Daily view** — tasks are scheduled into a timeline based on your
+   energy capacity for the day (`src/lib/planner-logic.ts`), not just
+   raw time available.
+6. **Dopamine** — short, low-effort rewards to break up the day.
 
-   ```bash
-   npm install
-   ```
+## Stack
 
-2. Start the app
+- [Expo](https://expo.dev) (SDK 54) + [expo-router](https://docs.expo.dev/router/introduction/) for file-based routing
+- React Native 0.81 / React 19
+- [Supabase](https://supabase.com) for auth and data
+- TypeScript
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Getting started
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+This app has no separate `.env` setup yet — Supabase connection details
+live in `src/lib/supabase.ts`. From the Expo CLI output you can open the
+app in a development build, an Android/iOS simulator, or Expo Go.
 
-### Other setup steps
+## Project structure
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```
+src/
+  app/          screens, one file per route (expo-router)
+  components/   shared UI (planner/ holds the app-specific components)
+  hooks/        useAuth, useTheme, useColorScheme, etc.
+  lib/          Supabase client, scheduling logic
+  store/        planner state (PlannerProvider)
+  types/        shared TypeScript types
+```
 
-## Learn more
+## Scripts
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-# Planergy-App
+- `npm run android` / `npm run ios` / `npm run web` — start Expo for a specific platform
+- `npm run lint` — `expo lint`
