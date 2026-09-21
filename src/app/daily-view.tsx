@@ -15,7 +15,7 @@ import { usePlanner } from '@/store/planner-store';
 
 export default function DailyViewScreen() {
   const theme = usePlannerTheme();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const {
     tasks,
     energyLevel,
@@ -82,7 +82,8 @@ export default function DailyViewScreen() {
   }
 
   function handleSignOut() {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+    const email = user?.primaryEmailAddress?.emailAddress;
+    Alert.alert('Sign out', email ? `Signed in as ${email}. Sign out?` : 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: signOut },
     ]);

@@ -1,31 +1,22 @@
-import { Session } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-expo';
 
-import { supabase } from '@/lib/supabase';
-
+/**
+ * Thin wrapper over Clerk's hooks that keeps the shape the app already
+ * consumes (`isSignedIn` / `isLoaded` / `signOut`), so screens don't need to
+ * know which auth provider is behind it.
+ */
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setIsLoaded(true);
-    });
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setIsLoaded(true);
-    });
-
-    return () => subscription.subscription.unsubscribe();
-  }, []);
+  const { isLoaded, isSignedIn, userId, sessionId, signOut } = useClerkAuth();
+  const { user } = useUser();
 
   return {
-    session,
-    user: session?.user ?? null,
-    isSignedIn: !!session,
+    user: user ?? null,
+    userId: userId ?? null,
+    sessionId: sessionId ?? null,
+    isSignedIn: !!isSignedIn,
     isLoaded,
-    signOut: () => supabase.auth.signOut(),
+    // Wrapped so press handlers can pass it straight to onPress without
+    // their event argument landing in Clerk's options parameter.
+    signOut: () => signOut(),
   };
 }
