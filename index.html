@@ -4,838 +4,623 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planergy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* ------------------------------------------------------------------
+           Design tokens. Every colour, size and radius below comes from here,
+           so they map one-to-one onto a Flutter ThemeData / ColorScheme.
+           ------------------------------------------------------------------ */
         :root {
-            --primary: #5B8FF9;
-            --primary-hover: #4A7FE8;
-            --text: #37352F;
-            --text-secondary: #787774;
-            --bg: #F7F6F3;
-            --surface: #FFFFFF;
-            --border: #E3E2DF;
-            --shadow: 0 1px 3px rgba(15, 15, 15, 0.1);
-            --shadow-lg: 0 8px 24px rgba(15, 15, 15, 0.12);
+            /* surfaces */
+            --ground: #ffffff;        /* page */
+            --surface: #f6f7f5;       /* panels: one step off white, toward sage */
+            --raised: #ffffff;        /* the one white card inside a panel (the timeline) */
+            --well: #eceeea;          /* segmented-control track, hover rows */
+            --border: #e4e6e1;        /* panel and row-card edges */
+            --rule: #eef0ec;          /* lines inside the timeline */
+            --control: #cfd2cc;       /* input borders */
+
+            /* text */
+            --text: #1f201d;
+            --muted: #5c5d59;         /* 4.5:1 or more on --surface */
+
+            /* one hue: today's energy, the planned minutes, the important tasks */
+            --accent: #1b6e66;
+            --accent-tint: #e1efec;
+            --primary: #1f201d;       /* the one filled button is near-black */
+            --primary-ink: #ffffff;
+
+            /* status, used only on the fact that needs it */
+            --negative: #b42318;
+            --warning-bg: #fffbeb; --warning-edge: #f3d27a; --warning-ink: #8a3c0c;
+
+            /* type: one family, plus a serif for the greeting only */
+            --font: "Instrument Sans", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+            --font-greeting: "Instrument Serif", Georgia, serif;
+            --fs-greeting: 44px;
+            --fs-figure: 32px;
+            --fs-title: 15px;
+            --fs-body: 14px;
+            --fs-small: 12px;
+
+            /* shape and space */
+            --radius-card: 22px;
+            --radius-row: 14px;
+            --radius-control: 999px;
+            --gap: 16px;
+            --pad: 20px;
+            --control-height: 38px;
+
+            --ease: cubic-bezier(0.22, 1, 0.36, 1);
         }
 
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-            background: var(--bg);
+            margin: 0;
+            background: var(--ground);
             color: var(--text);
-            line-height: 1.6;
-            padding: 40px 20px;
+            font: 400 var(--fs-body)/20px var(--font);
+            -webkit-font-smoothing: antialiased;
         }
+        h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+        ul, ol { list-style: none; }
+        button, input, select, textarea { font: inherit; color: inherit; }
+        .num { font-variant-numeric: tabular-nums; }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-        .container {
-            max-width: 1400px;
+        /* ---------- shell: a centred 1100px column on a 12-column grid ----------
+           12 x 77px columns + 11 x 16px gutters = 924 + 176 = 1100px.
+           Row 1 spans 3/3/3/3, row 2 spans 6/6, row 3 spans 12: every
+           internal edge lands on a column line used by the row above it. */
+        .page {
+            max-width: 1132px;            /* 1100 + 2 x 16 margins */
             margin: 0 auto;
+            padding: 24px 16px 96px;
         }
-
-        header {
-            text-align: center;
-            margin-bottom: 48px;
-        }
-
-        h1 {
-            font-size: 2.25rem;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 8px;
-            letter-spacing: -0.02em;
-        }
-
-        .subtitle {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            font-weight: 400;
-        }
-
-        /* TWO COLUMN LAYOUT - EQUAL WIDTHS */
-        .main-grid {
+        .grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 32px;
-            align-items: start;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: var(--gap);
         }
+        .span-3 { grid-column: span 3; }
+        .span-6 { grid-column: span 6; }
+        .span-12 { grid-column: span 12; }
 
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 16px;
         }
+        .brand svg { width: 26px; height: 26px; flex: none; }
 
-        .left-column, .right-column {
+        .greeting { margin: 48px 0 40px; }
+        .greeting h1 {
+            font: 400 var(--fs-greeting)/1.05 var(--font-greeting);
+            letter-spacing: -0.01em;
+        }
+        .greeting p {
+            margin-top: 12px;
+            max-width: 64ch;
+            font-size: 16px;
+            line-height: 24px;
+            color: var(--muted);
+        }
+        .greeting p strong { color: var(--text); font-weight: 500; }
+
+        /* ---------- panels ---------- */
+        .panel {
+            background: var(--surface);
+            border-radius: var(--radius-card);
+            padding: var(--pad);
+            min-width: 0;
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 32px;
+            margin-bottom: 14px;
+        }
+        .panel-head h2 { font-size: var(--fs-title); line-height: 20px; font-weight: 600; }
+        .panel-head .end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .count {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 22px; height: 22px; padding: 0 7px;
+            border-radius: 999px; background: var(--well);
+            font-size: var(--fs-small); font-weight: 500; color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+        .note { font-size: 13px; line-height: 18px; color: var(--muted); }
+
+        /* ---------- row 1: today's settings and figures ---------- */
+        .tile {
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 10px;
+            min-height: 148px;
         }
-
-        /* Card Styling */
-        .card {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 28px;
-            box-shadow: var(--shadow);
+        .tile-label { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--muted); }
+        .tile-figure {
+            font-size: var(--fs-figure);
+            line-height: 1;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
         }
+        .tile-figure small { font-size: 15px; letter-spacing: 0; color: var(--muted); margin-left: 3px; }
+        .tile .note { margin-top: auto; }
 
-        .card h2 {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 18px;
-        }
-
-        /* Brain Dump Section */
-        .brain-dump-section {
-            text-align: center;
-        }
-
-        .brain-dump-subtitle {
-            color: var(--text-secondary);
-            font-size: 0.88rem;
-            margin-bottom: 24px;
-        }
-
-        .voice-button-large {
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            background: var(--primary);
-            border: none;
-            cursor: pointer;
+        /* the energy budget track: as long as today's capacity, filled by what is planned */
+        .budget-track {
             display: flex;
+            gap: 2px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--well);
+            overflow: hidden;
+        }
+        .budget-track span { background: var(--accent); }
+        .budget-track span.done { background: var(--text); }
+
+        /* ---------- controls ---------- */
+        .seg {
+            display: flex;
+            padding: 3px;
+            border-radius: var(--radius-control);
+            background: var(--well);
+        }
+        .seg button {
+            flex: 1;
+            height: 32px;
+            padding: 0 12px;
+            border: 0;
+            border-radius: var(--radius-control);
+            background: transparent;
+            color: var(--muted);
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background-color 150ms var(--ease), color 150ms var(--ease);
+        }
+        .seg button:hover { color: var(--text); }
+        .seg button.active,
+        .seg button[aria-checked="true"],
+        .seg button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+        .seg.small { padding: 2px; }
+        .seg.small button { height: 26px; padding: 0 9px; font-size: 13px; }
+        .seg.small button.on-accent[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+        .btn {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 18px;
-            box-shadow: var(--shadow-lg);
-            transition: all 0.3s ease;
-        }
-
-        .voice-button-large:hover {
-            background: var(--primary-hover);
-            transform: scale(1.05);
-        }
-
-        .voice-button-large.recording {
-            background: #EF4444;
-            animation: pulse 1.5s infinite;
-        }
-
-        .voice-button-large svg {
-            width: 36px;
-            height: 36px;
-            fill: white;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .or-divider {
-            color: var(--text-secondary);
-            font-size: 0.82rem;
-            margin: 14px 0;
-        }
-
-        .type-tasks-btn {
-            padding: 9px 26px;
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.92rem;
-            color: var(--text);
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .type-tasks-btn:hover {
-            border-color: var(--primary);
-            background: #FAFAF9;
-        }
-
-        .text-input-area {
-            display: none;
-            margin-top: 18px;
-            text-align: left;
-        }
-
-        .text-input-area.active {
-            display: block;
-        }
-
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.92rem;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 120px;
-            margin-bottom: 10px;
-            color: var(--text);
-            background: var(--surface);
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        textarea::placeholder {
-            color: var(--text-secondary);
-        }
-
-        .btn-add-task {
-            padding: 9px 18px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.92rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-add-task:hover {
-            background: var(--primary-hover);
-        }
-
-        /* Energy & Communication Sections */
-        .energy-label {
-            font-size: 1.4rem;
-            color: var(--text);
-            font-weight: 600;
-            margin-bottom: 18px;
-        }
-
-        .energy-buttons {
-            display: flex;
             gap: 8px;
-        }
-
-        .energy-btn {
-            flex: 1;
-            padding: 9px 14px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            background: var(--surface);
-            font-size: 0.88rem;
+            height: var(--control-height);
+            padding: 0 18px;
+            border-radius: var(--radius-control);
+            border: 1px solid var(--control);
+            background: var(--raised);
             font-weight: 500;
-            color: var(--text);
+            white-space: nowrap;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background-color 150ms var(--ease), border-color 150ms var(--ease), transform 120ms var(--ease);
         }
-
-        .energy-btn:hover {
-            border-color: var(--primary);
+        .btn:hover { border-color: var(--text); }
+        .btn:active { transform: scale(0.97); }
+        .btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+        .btn-primary:hover { background: #3a3b37; border-color: #3a3b37; }
+        .btn-text {
+            height: 30px;
+            padding: 0 10px;
+            border: 0;
+            border-radius: var(--radius-control);
+            background: transparent;
+            color: var(--muted);
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 150ms var(--ease), color 150ms var(--ease);
         }
+        .btn-text:hover { background: var(--well); color: var(--text); }
+        .btn-text.danger:hover { background: #fdecea; color: var(--negative); }
 
-        .energy-btn.active {
-            border-color: var(--primary);
-            background: var(--primary);
-            color: white;
+        .field {
+            width: 100%;
+            min-height: var(--control-height);
+            padding: 8px 14px;
+            border: 1px solid var(--control);
+            border-radius: 12px;
+            background: var(--raised);
+            line-height: 20px;
         }
+        .field::placeholder { color: #6b6c68; }
+        .field:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+        select.field, input[type="time"].field, input[type="number"].field { width: auto; padding: 0 12px; height: 32px; min-height: 0; border-radius: var(--radius-control); }
 
-        /* Task List Section */
-        .task-list {
-            display: flex;
-            flex-direction: column;
-            gap: 9px;
-        }
+        /* ---------- add tasks ---------- */
+        textarea.field { min-height: 116px; resize: vertical; display: block; }
+        .composer-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .composer-actions .btn-primary { margin-left: auto; }
+        #voiceBtn.recording { border-color: var(--negative); color: var(--negative); }
+        #voiceBtn .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: none; }
+        #voiceBtn.recording .rec-dot { display: block; animation: blink 1.2s steps(2, start) infinite; }
+        #voiceBtn.recording svg { display: none; }
+        @keyframes blink { to { opacity: 0.2; } }
+        .voice-status { min-height: 18px; margin-top: 8px; }
 
+        /* ---------- task list: row cards ---------- */
+        .stack { display: flex; flex-direction: column; gap: var(--gap); }
+        .task-list { display: flex; flex-direction: column; gap: 8px; }
         .task-item {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            padding: 11px 13px;
-            background: var(--bg);
-            border-radius: 8px;
+            padding: 12px 14px;
+            border-radius: var(--radius-row);
+            background: var(--raised);
             border: 1px solid var(--border);
+            transition: border-color 150ms var(--ease);
         }
-
-        .task-item.important {
-            background: #FEF3C7;
-            border-color: #FCD34D;
+        .task-item:hover { border-color: var(--control); }
+        .task-item.important { border-left: 3px solid var(--accent); padding-left: 12px; }
+        .task-top { display: flex; align-items: baseline; gap: 10px; }
+        .task-name { flex: 1; min-width: 0; font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+        .task-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .task-controls .btn-delete { margin-left: auto; }
+        .pill {
+            flex: none;
+            display: inline-flex; align-items: center;
+            height: 22px; padding: 0 9px;
+            border-radius: 999px;
+            font-size: var(--fs-small); font-weight: 500; white-space: nowrap;
         }
+        .pill.warning { background: var(--warning-bg); color: var(--warning-ink); border: 1px solid var(--warning-edge); }
+        .pill.accent { background: var(--accent-tint); color: var(--accent); }
+        .task-item.verbal-flag { background: var(--warning-bg); border-color: var(--warning-edge); }
 
-        .task-item.verbal-flag {
-            background: #FFEDD5;
-            border: 2px dashed #FB923C;
+        /* energy pips: one, two or three filled bars, the product's own mark for effort */
+        .pips { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+        .pips i { width: 3px; border-radius: 1px; background: var(--control); }
+        .pips i:nth-child(1) { height: 6px; }
+        .pips i:nth-child(2) { height: 9px; }
+        .pips i:nth-child(3) { height: 12px; }
+        .pips i.on { background: currentColor; }
+
+        .empty-state {
+            padding: 18px;
+            border: 1px dashed var(--control);
+            border-radius: var(--radius-row);
+            color: var(--muted);
+            line-height: 20px;
         }
+        .empty-state .btn { margin-top: 12px; }
 
-        .verbal-flag-note {
-            color: #C2410C;
-            font-size: 0.75rem;
-            font-weight: 500;
-            margin-top: 3px;
+        /* ---------- today's schedule ---------- */
+        .schedule-panel { display: flex; flex-direction: column; }
+        .schedule-panel .panel-head label { color: var(--muted); }
+        .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 12px; color: var(--muted); font-size: var(--fs-small); }
+        .legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .legend i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+
+        .timeline-frame {
+            flex: 1 1 0;
+            min-height: 360px;
+            overflow-y: auto;
+            background: var(--raised);
+            border-radius: var(--radius-row);
+            padding: 8px 12px 8px 0;
         }
-
-        .task-text {
-            flex: 1;
-            font-size: 0.92rem;
-            color: var(--text);
-        }
-
-        .task-meta {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 4px;
-            flex-wrap: wrap;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .duration-select {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 2px 4px;
-            cursor: pointer;
-        }
-
-        .energy-toggle {
-            display: flex;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-        }
-
-        .energy-toggle-option {
-            padding: 2px 8px;
-            font-size: 0.72rem;
-            font-weight: 500;
-            border: none;
-            background: var(--surface);
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .energy-toggle-option.low.active {
-            background: #10B981;
-            color: white;
-        }
-
-        .energy-toggle-option.medium.active {
-            background: #F59E0B;
-            color: white;
-        }
-
-        .energy-toggle-option.high.active {
-            background: #EF4444;
-            color: white;
-        }
-
-        .priority-toggle {
-            display: flex;
-            border-radius: 8px;
-            border: 2px solid var(--border);
-            overflow: hidden;
-            background: var(--surface);
-            cursor: pointer;
-            transition: all 0.2s;
-            min-width: 160px;
-        }
-
-        .priority-toggle:hover {
-            border-color: var(--primary);
-        }
-
-        .priority-toggle-option {
-            flex: 1;
-            padding: 6px 12px;
-            font-size: 0.78rem;
-            font-weight: 500;
-            text-align: center;
-            transition: all 0.2s;
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-
-        .priority-toggle-option {
-            background: var(--surface);
-            color: var(--text-secondary);
-        }
-
-        .priority-toggle.flexible-selected .priority-toggle-option.flexible {
-            background: var(--primary);
-            color: white;
-        }
-
-        .priority-toggle.flexible-selected .priority-toggle-option.important {
-            background: var(--surface);
-            color: var(--text-secondary);
-        }
-
-        .priority-toggle.important-selected .priority-toggle-option.important {
-            background: var(--primary);
-            color: white;
-        }
-
-        .priority-toggle.important-selected .priority-toggle-option.flexible {
-            background: var(--surface);
-            color: var(--text-secondary);
-        }
-
-        .btn-delete {
-            padding: 5px 10px;
-            background: transparent;
-            color: var(--text-secondary);
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.78rem;
-            transition: all 0.2s;
-        }
-
-        .btn-delete:hover {
-            background: #FEE2E2;
-            color: #DC2626;
-        }
-
-        /* Schedule Section with Checkboxes */
-        .schedule-timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            position: relative;
-            padding-left: 65px;
-        }
-
+        .schedule-timeline { position: relative; }
+        .schedule-timeline > .empty-state { margin: 8px 0 8px 12px; }
         .timeline-row {
             display: flex;
-            align-items: stretch;
             height: 44px;
-            border-bottom: 1px dashed #EDECE8;
             position: relative;
+            transition: background-color 120ms var(--ease);
         }
-
-        .timeline-row.hour-mark {
-            border-bottom: 1px solid var(--border);
-        }
-
-        .timeline-row:last-child {
-            border-bottom: none;
-        }
-
+        .timeline-row.hour-mark { box-shadow: inset 0 1px 0 var(--rule); } /* the hour gridline; taste-skill-ignore */
+        .timeline-row.drag-over { background: var(--accent-tint); }
         .timeline-hour {
-            position: absolute;
-            left: -65px;
-            width: 58px;
+            width: 72px;
+            flex: none;
+            padding: 4px 12px 0 0;
             text-align: right;
-            font-size: 0.76rem;
-            color: var(--text-secondary);
-            padding-top: 2px;
+            white-space: nowrap;
+            font-size: var(--fs-small);
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
         }
-
-        .timeline-row.hour-mark .timeline-hour {
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .timeline-content {
-            flex: 1;
-        }
+        .timeline-content { flex: 1; }
 
         /* Task blocks are positioned absolutely (top/height set inline in JS)
            so a block's height reflects its actual duration, not a fixed slot size */
         .timeline-event {
             position: absolute;
-            left: 65px;
-            right: 9px;
-            background: #E0E7FF;
-            border-left: 3px solid var(--primary);
-            border-radius: 6px;
-            padding: 4px 9px;
+            left: 72px;
+            right: 0;
             display: flex;
             align-items: center;
-            gap: 9px;
+            gap: 10px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            background: var(--well);
             overflow: hidden;
-            transition: box-shadow 0.2s, transform 0.2s;
-            cursor: move;
+            cursor: grab;
             z-index: 2;
             line-height: 1.2;
+            transition: transform 150ms var(--ease), opacity 150ms var(--ease);
         }
-
-        .timeline-event:hover {
-            box-shadow: var(--shadow);
-            transform: translateX(2px);
-            z-index: 3;
+        .timeline-event:hover { transform: translateX(2px); z-index: 3; }
+        .timeline-event.dragging { opacity: 0.5; cursor: grabbing; }
+        .timeline-event.important { background: var(--accent-tint); border-left: 3px solid var(--accent); }
+        .timeline-event.dopamine { background: var(--raised); border-color: var(--control); }
+        .timeline-event.verbal-flag { background: var(--warning-bg); border-color: var(--warning-edge); }
+        /* tasks under 30 min get one line, so the block can stay as short as the task */
+        .timeline-event.compact { padding: 0 10px; gap: 8px; }
+        .timeline-event.compact .timeline-checkbox { width: 14px; height: 14px; }
+        .timeline-event.compact .timeline-event-content { display: flex; align-items: baseline; gap: 10px; }
+        .timeline-event.compact .timeline-event-title { flex: 0 1 auto; min-width: 4em; }
+        .timeline-event.compact .timeline-event-time { margin-top: 0; min-width: 0; }
+        .timeline-empty {
+            position: absolute;
+            top: 8px; left: 72px; right: 0;
+            padding: 10px 14px;
+            border: 1px dashed var(--control);
+            border-radius: 8px;
+            background: var(--raised);
+            color: var(--muted);
         }
+        .timeline-event.completed { opacity: 0.55; }
+        .timeline-event.completed .timeline-event-title { text-decoration: line-through; }
 
-        .timeline-event.dragging {
-            opacity: 0.5;
-            cursor: grabbing;
-        }
-
-        .timeline-row.drag-over {
-            background-color: #F0F9FF;
-        }
-
-        .timeline-event:focus {
-            outline: 3px solid #A5B4FC;
-            outline-offset: 2px;
-        }
-
-        .timeline-event.important {
-            background: #FEF3C7;
-            border-left-color: #F59E0B;
-        }
-
-        .timeline-event.dopamine {
-            background: #FCE7F3;
-            border-left-color: #EC4899;
-        }
-
-        .timeline-event.verbal-flag {
-            background: #FFEDD5;
-            border-left-color: #FB923C;
-        }
-
-        .timeline-event.completed {
-            opacity: 0.6;
-        }
-
-        .timeline-event.completed .timeline-event-title {
-            text-decoration: line-through;
-        }
-
-        .timeline-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .timeline-event-content {
-            flex: 1;
-            min-width: 0;
-        }
-
+        .timeline-checkbox { width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer; }
+        .timeline-event-content { flex: 1; min-width: 0; }
         .timeline-event-title {
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 2px;
+            font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         .timeline-event-time {
-            font-size: 0.74rem;
-            color: var(--text-secondary);
-        }
-
-        /* Dopamine Menu */
-        .dopamine-card {
-            background: #FCE7F3;
-            border: 2px solid #F9A8D4;
-        }
-
-        .dopamine-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        .dopamine-header h2 {
-            margin: 0;
-            display: inline-block;
-        }
-
-        .dopamine-toggle-icon {
-            margin-left: 10px;
-            font-size: 1.1rem;
-        }
-
-        .dopamine-add-btn {
-            background: #EC4899;
-            padding: 7px 13px;
-            font-size: 0.82rem;
-        }
-
-        .dopamine-add-btn:hover {
-            background: #DB2777;
-        }
-
-        .dopamine-content {
-            display: none;
-            margin-top: 14px;
-        }
-
-        .dopamine-content.active {
-            display: block;
-        }
-
-        .dopamine-subtitle {
-            color: var(--text-secondary);
-            font-size: 0.82rem;
-            margin-bottom: 12px;
-        }
-
-        .dopamine-item {
-            background: white;
-            border: 2px solid #F9A8D4;
-            cursor: pointer;
-        }
-
-        .dopamine-item:hover {
-            background: #FFF7FB;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 28px;
-            color: var(--text-secondary);
-            font-size: 0.88rem;
-        }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 2px;
+            font-size: var(--fs-small);
+            color: var(--muted);
             white-space: nowrap;
-            border-width: 0;
+            font-variant-numeric: tabular-nums;
         }
+        .timeline-event.verbal-flag .timeline-event-time { color: var(--warning-ink); }
 
-        button:focus,
-        input:focus,
-        textarea:focus,
-        [tabindex]:focus {
-            outline: 3px solid #A5B4FC;
-            outline-offset: 2px;
+        .waiting { margin-top: 14px; }
+        .waiting h3 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .waiting li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; color: var(--muted); }
+        .waiting li span:first-child { color: var(--text); }
+
+        /* ---------- dopamine menu ---------- */
+        .dopamine-header { cursor: pointer; border-radius: 12px; }
+        .dopamine-header h2 { flex: none; }
+        .dopamine-toggle-icon { width: 16px; height: 16px; fill: none; stroke: var(--muted); stroke-width: 1.6; transition: transform 200ms var(--ease); }
+        .dopamine-header[aria-expanded="true"] .dopamine-toggle-icon { transform: rotate(180deg); }
+        .dopamine-content { display: none; }
+        .dopamine-content.active { display: block; }
+        .dopamine-form { display: none; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+        .dopamine-form .field[type="text"] { flex: 1 1 240px; width: auto; height: var(--control-height); padding: 0 14px; border-radius: var(--radius-control); }
+        .dopamine-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .dopamine-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 63px;
+            padding: 10px 8px 10px 14px;
+            border-radius: var(--radius-row);
+            background: var(--raised);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: border-color 150ms var(--ease), transform 120ms var(--ease);
+        }
+        .dopamine-item:hover { border-color: var(--accent); }
+        .dopamine-item:active { transform: scale(0.99); }
+        .dopamine-item.added { border-color: var(--accent); background: var(--accent-tint); }
+        .dopamine-item .task-text { flex: 1; min-width: 0; line-height: 18px; }
+        .dopamine-item .task-text span { display: block; font-size: var(--fs-small); color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .icon-btn {
+            flex: none;
+            width: 32px; height: 32px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 0; border-radius: 50%;
+            background: transparent; color: var(--muted);
+            cursor: pointer;
+            transition: background-color 150ms var(--ease), color 150ms var(--ease);
+        }
+        .icon-btn:hover { background: var(--well); color: var(--text); }
+        .icon-btn.danger:hover { background: #fdecea; color: var(--negative); }
+        .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* ---------- tablet and phone ---------- */
+        @media (max-width: 1000px) {
+            .span-3 { grid-column: span 6; }
+            .span-6 { grid-column: span 12; }
+            .dopamine-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .timeline-frame { flex: none; height: 520px; }
+        }
+        @media (max-width: 600px) {
+            .page { padding-top: 16px; }
+            .greeting { margin: 28px 0 24px; }
+            .greeting h1 { font-size: 30px; }
+            .greeting p { font-size: 15px; }
+            .tile.span-3 { grid-column: span 6; }
+            .tile.wide { grid-column: span 12; }
+            .tile { min-height: 0; padding: 16px; }
+            .dopamine-header #dopamineHint { display: none; }
+            .timeline-event.compact .range { display: none; }
+            .tile-figure { font-size: 26px; }
+            .tile .seg button { padding: 0 6px; }
+            .dopamine-grid { grid-template-columns: 1fr; }
+            .panel { padding: 16px; border-radius: 18px; }
+            .timeline-hour { width: 64px; padding-right: 8px; font-size: 11px; }
+            .timeline-event, .timeline-empty { left: 64px; }
+            .composer-actions .btn { flex: 1; }
+            .seg button { min-height: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Planergy</h1>
-            <p class="subtitle">Plan your day based on your energy level</p>
+    <main class="page">
+        <div class="brand">
+            <svg viewBox="0 0 26 26" aria-hidden="true">
+                <rect width="26" height="26" rx="8" fill="#1b6e66"/>
+                <rect x="6.5" y="14" width="3" height="6" rx="1.2" fill="#fff"/>
+                <rect x="11.5" y="10.5" width="3" height="9.5" rx="1.2" fill="#fff"/>
+                <rect x="16.5" y="6.5" width="3" height="13.5" rx="1.2" fill="#fff" opacity="0.45"/>
+            </svg>
+            Planergy
+        </div>
+
+        <header class="greeting">
+            <h1 id="greeting">Good morning.</h1>
+            <p id="dayFinding" role="status" aria-live="polite">Nothing planned yet.</p>
         </header>
 
-        <div class="main-grid">
-            <!-- LEFT COLUMN -->
-            <div class="left-column">
-                <!-- 1. Record Your Thoughts -->
-                <div class="card brain-dump-section" role="region" aria-labelledby="brain-dump-heading">
-                    <h2 id="brain-dump-heading">Step 1: Add Your Tasks</h2>
-                    <p class="brain-dump-subtitle">Type one task per line or record one task with voice</p>
-                    
-                    <button class="voice-button-large" 
-                        id="voiceBtn" 
-                        onclick="toggleVoice()"
-                        aria-label="Start voice recording. Click to record your tasks using your microphone."
-                        aria-pressed="false">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                        </svg>
-                    </button>
+        <div class="grid">
+            <!-- Row 1: what today looks like -->
+            <section class="panel tile wide span-3" aria-labelledby="energy-heading">
+                <h2 class="tile-label" id="energy-heading">Energy today</h2>
+                <div class="seg" id="energyButtons" role="radiogroup" aria-labelledby="energy-heading">
+                    <button class="energy-btn" onclick="setEnergy('low')" role="radio" aria-checked="false">Low</button>
+                    <button class="energy-btn active" onclick="setEnergy('medium')" role="radio" aria-checked="true">Medium</button>
+                    <button class="energy-btn" onclick="setEnergy('high')" role="radio" aria-checked="false">High</button>
+                </div>
+                <p class="note" id="energyNote">Up to 120 min of tasks</p>
+            </section>
 
-                    <div class="or-divider" aria-hidden="true">or</div>
-                    
-                    <button class="type-tasks-btn" 
-                        onclick="toggleTextInput()"
-                        aria-label="Open text input to type your tasks"
-                        aria-expanded="false"
-                        aria-controls="textInputArea">Type Tasks</button>
+            <section class="panel tile wide span-3" aria-labelledby="communication-heading">
+                <h2 class="tile-label" id="communication-heading">Talking today</h2>
+                <div class="seg" role="radiogroup" aria-labelledby="communication-heading">
+                    <button class="energy-btn active" id="verbalBtn" onclick="setCommunicationMode('verbal')" role="radio" aria-checked="true">Can talk</button>
+                    <button class="energy-btn" id="nonverbalBtn" onclick="setCommunicationMode('nonverbal')" role="radio" aria-checked="false">Non-verbal</button>
+                </div>
+                <p class="note" id="communicationNote">Voice input is on</p>
+            </section>
 
-                    <div class="text-input-area" 
-                        id="textInputArea" 
-                        role="region"
-                        aria-label="Task input area"
-                        aria-hidden="true">
-                        <textarea id="taskInput" 
-                            placeholder="Type your tasks"
-                            aria-label="Enter your tasks. Each line will become a separate task. Press Shift+Enter for a new line."
+            <section class="panel tile span-3" aria-labelledby="planned-heading">
+                <h2 class="tile-label" id="planned-heading">Planned</h2>
+                <p class="tile-figure" id="plannedFigure">0<small>/ 120 min</small></p>
+                <div class="budget-track" id="budgetTrack" aria-hidden="true"></div>
+                <p class="note" id="plannedNote">120 min free</p>
+            </section>
+
+            <section class="panel tile span-3" aria-labelledby="done-heading">
+                <h2 class="tile-label" id="done-heading">Done</h2>
+                <p class="tile-figure" id="doneFigure">0<small>/ 0 tasks</small></p>
+                <p class="note" id="doneNote">Tick a task in the schedule when it's done</p>
+            </section>
+
+            <!-- Row 2: get tasks in, see where they land -->
+            <div class="stack span-6">
+                <section class="panel" aria-labelledby="brain-dump-heading">
+                    <div class="panel-head">
+                        <h2 id="brain-dump-heading">Add tasks</h2>
+                    </div>
+                    <div class="text-input-area active" id="textInputArea" role="region" aria-labelledby="brain-dump-heading">
+                        <label for="taskInput" class="sr-only">Your tasks, one per line</label>
+                        <textarea id="taskInput" class="field"
+                            placeholder="One task per line, e.g.&#10;Reply to Sam's email&#10;Tidy the desk"
                             aria-describedby="task-input-help"></textarea>
-                        <span id="task-input-help" class="sr-only">Enter tasks, one per line. Press Add All Tasks when done.</span>
-                        <button class="btn-add-task" 
-                            onclick="addTask()"
-                            aria-label="Add all tasks from the text input to your task list">Add All Tasks</button>
+                        <span id="task-input-help" class="sr-only">Each line becomes a task. Press Enter to add, Shift+Enter for a new line.</span>
                     </div>
-                </div>
-
-                <!-- 2. Energy Level -->
-                <div class="card" role="region" aria-labelledby="energy-heading">
-                    <div class="energy-label" id="energy-heading">Step 2: Choose Today's Energy Level</div>
-                    <div class="energy-buttons" role="radiogroup" aria-labelledby="energy-heading">
-                        <button class="energy-btn" 
-                            onclick="setEnergy('low')"
-                            role="radio"
-                            aria-checked="false"
-                            aria-label="Set energy level to low">Low</button>
-                        <button class="energy-btn active" 
-                            onclick="setEnergy('medium')"
-                            role="radio"
-                            aria-checked="true"
-                            aria-label="Set energy level to medium">Medium</button>
-                        <button class="energy-btn" 
-                            onclick="setEnergy('high')"
-                            role="radio"
-                            aria-checked="false"
-                            aria-label="Set energy level to high">High</button>
-                    </div>
-                </div>
-
-                <!-- 3. Communication Preference -->
-                <div class="card" role="region" aria-labelledby="communication-heading">
-                    <div class="energy-label" id="communication-heading">Step 3: Choose How You Want to Communicate</div>
-                    <div class="energy-buttons" role="radiogroup" aria-labelledby="communication-heading">
-                        <button class="energy-btn active" 
-                            id="verbalBtn" 
-                            onclick="setCommunicationMode('verbal')"
-                            role="radio"
-                            aria-checked="true"
-                            aria-label="Set communication mode to verbal - voice input enabled">Can Talk</button>
-                        <button class="energy-btn" 
-                            id="nonverbalBtn" 
-                            onclick="setCommunicationMode('nonverbal')"
-                            role="radio"
-                            aria-checked="false"
-                            aria-label="Set communication mode to non-verbal - text input only">Non-Verbal</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT COLUMN -->
-            <div class="right-column">
-                <!-- 1. Your Tasks -->
-                <div class="card" role="region" aria-labelledby="tasks-heading">
-                    <h2 id="tasks-heading">Step 4: Review and Prioritise Your Tasks</h2>
-                    <div class="task-list" 
-                        id="taskList" 
-                        role="list"
-                        aria-label="List of your tasks">
-                        <div class="empty-state" role="status" aria-live="polite">No tasks yet. Add some!</div>
-                    </div>
-                </div>
-
-                <!-- 2. Today's Schedule -->
-                <div class="card" role="region" aria-labelledby="schedule-heading">
-                    <h2 id="schedule-heading">Step 5: Your Adaptive Schedule for Today</h2>
-                    <p class="brain-dump-subtitle" style="margin-bottom: 12px;">Drag tasks around as your energy changes</p>
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
-                        <label for="scheduleStartInput" style="font-size: 0.82rem; color: var(--text-secondary);">Schedule starts at:</label>
-                        <input type="time"
-                            id="scheduleStartInput"
-                            value="09:00"
-                            step="1800"
-                            onchange="setScheduleStartTime(this.value)"
-                            aria-label="Time your schedule starts each day"
-                            style="padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; color: var(--text);">
-                    </div>
-                    <div class="schedule-timeline"
-                        id="schedule"
-                        role="table"
-                        aria-label="Today's schedule timeline">
-                        <div class="empty-state" role="status" aria-live="polite">Add tasks to generate your schedule!</div>
-                    </div>
-                </div>
-
-                <!-- 3. Dopamine Menu (Reward) -->
-                <div class="card dopamine-card" role="region" aria-labelledby="dopamine-heading">
-                    <div class="dopamine-header" 
-                        onclick="toggleDopamineSection()"
-                        role="button"
-                        tabindex="0"
-                        aria-expanded="false"
-                        aria-controls="dopamineContent"
-                        aria-label="Toggle dopamine menu section"
-                        onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); toggleDopamineSection(); }">
-                        <div>
-                            <h2 id="dopamine-heading">Step 6: Dopamine Menu</h2>
-                            <span id="dopamineToggleIcon" class="dopamine-toggle-icon" aria-hidden="true">▼</span>
-                        </div>
-                        <button class="btn-add-task dopamine-add-btn" 
-                            onclick="event.stopPropagation(); toggleDopamineMenu()"
-                            aria-label="Add custom dopamine activity"
-                            aria-expanded="false"
-                            aria-controls="dopamineInput">
-                            + Custom
+                    <div class="composer-actions">
+                        <button class="btn" id="voiceBtn" type="button" onclick="toggleVoice()" aria-pressed="false">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                            </svg>
+                            <span class="rec-dot" aria-hidden="true"></span>
+                            <span id="voiceLabel">Speak tasks</span>
                         </button>
+                        <button class="btn btn-primary btn-add-task" type="button" onclick="addTask()">Add to today</button>
                     </div>
-                    
-                    <div id="dopamineContent" 
-                        class="dopamine-content"
-                        role="region"
-                        aria-labelledby="dopamine-heading">
-                        <p class="dopamine-subtitle">
-                            Add fun, low-pressure tasks to your schedule today
-                        </p>
-                        
-                        <div id="dopamineInput" 
-                            style="display: none; margin-bottom: 12px;"
-                            role="group"
-                            aria-label="Add custom dopamine activity">
-                            <input type="text" 
-                                id="customDopamineItem" 
-                                placeholder="What brings you joy?"
-                                aria-label="Enter custom dopamine activity name"
-                                style="width: calc(100% - 100px); padding: 8px; border: 2px solid var(--border); border-radius: 6px; font-size: 0.88rem; margin-right: 7px;">
-                            <button class="btn-add-task dopamine-add-btn" 
-                                onclick="addCustomDopamineItem()" 
-                                style="padding: 8px 16px;"
-                                aria-label="Add the custom dopamine activity">Add</button>
-                        </div>
+                    <p class="note voice-status" id="voiceStatus" aria-live="polite"></p>
+                </section>
 
-                        <div id="dopamineEditInput" 
-                            style="display: none; margin-bottom: 12px;"
-                            role="group"
-                            aria-label="Edit dopamine activity">
-                            <input type="text" 
-                                id="editDopamineItem" 
-                                placeholder="Edit activity"
-                                aria-label="Edit activity name"
-                                style="width: calc(50% - 55px); padding: 8px; border: 2px solid var(--border); border-radius: 6px; font-size: 0.88rem; margin-right: 7px;">
-                            <input type="number" 
-                                id="editDopamineDuration" 
-                                placeholder="15" 
-                                min="5" 
-                                max="120"
-                                aria-label="Duration in minutes"
-                                style="width: 65px; padding: 8px; border: 2px solid var(--border); border-radius: 6px; font-size: 0.88rem; margin-right: 7px;">
-                            <span style="margin-right: 7px; color: var(--text-secondary); font-size: 0.82rem;" aria-hidden="true">min</span>
-                            <button class="btn-add-task dopamine-add-btn" 
-                                onclick="saveDopamineEdit()" 
-                                style="padding: 8px 15px; margin-right: 5px;"
-                                aria-label="Save changes to dopamine activity">Save</button>
-                            <button class="type-tasks-btn" 
-                                onclick="cancelDopamineEdit()" 
-                                style="padding: 8px 15px;"
-                                aria-label="Cancel editing dopamine activity">Cancel</button>
-                        </div>
+                <section class="panel" aria-labelledby="tasks-heading">
+                    <div class="panel-head">
+                        <h2 id="tasks-heading">Tasks</h2>
+                        <span class="count" id="taskCount">0</span>
+                        <span class="end note">Set time, effort and priority</span>
+                    </div>
+                    <ul class="task-list" id="taskList" aria-labelledby="tasks-heading"></ul>
+                </section>
+            </div>
 
-                        <div class="task-list" 
-                            id="dopamineList"
-                            role="list"
-                            aria-label="List of dopamine activities"></div>
+            <section class="panel schedule-panel span-6" aria-labelledby="schedule-heading">
+                <div class="panel-head">
+                    <h2 id="schedule-heading">Today</h2>
+                    <div class="end">
+                        <label for="scheduleStartInput" class="note">Starts at</label>
+                        <input type="time" class="field" id="scheduleStartInput" value="09:00" step="1800"
+                            onchange="setScheduleStartTime(this.value)">
                     </div>
                 </div>
-            </div>
+                <div class="legend" id="scheduleLegend"></div>
+                <div class="timeline-frame" id="timelineFrame">
+                    <div class="schedule-timeline" id="schedule" role="table" aria-label="Today's schedule timeline"></div>
+                </div>
+                <div class="waiting" id="waitingList" hidden></div>
+            </section>
+
+            <!-- Row 3: small rewards -->
+            <section class="panel span-12" aria-labelledby="dopamine-heading">
+                <div class="panel-head dopamine-header"
+                    onclick="toggleDopamineSection()"
+                    role="button"
+                    tabindex="0"
+                    aria-expanded="false"
+                    aria-controls="dopamineContent"
+                    onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')) { event.preventDefault(); toggleDopamineSection(); }">
+                    <h2 id="dopamine-heading">Dopamine menu</h2>
+                    <span class="count" id="dopamineCount">10</span>
+                    <svg class="dopamine-toggle-icon" id="dopamineToggleIcon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+                    <div class="end">
+                        <span class="note" id="dopamineHint">Small, low-effort rewards. Tap one to fit it into today.</span>
+                        <button class="btn dopamine-add-btn" type="button"
+                            onclick="event.stopPropagation(); toggleDopamineMenu()"
+                            aria-expanded="false"
+                            aria-controls="dopamineInput">Add your own</button>
+                    </div>
+                </div>
+
+                <div id="dopamineContent" class="dopamine-content" role="region" aria-labelledby="dopamine-heading">
+                    <div id="dopamineInput" class="dopamine-form" role="group" aria-label="Add your own reward">
+                        <label for="customDopamineItem" class="sr-only">Reward</label>
+                        <input type="text" class="field" id="customDopamineItem" placeholder="What gives you a lift?">
+                        <button class="btn btn-primary" type="button" onclick="addCustomDopamineItem()">Add</button>
+                    </div>
+
+                    <div id="dopamineEditInput" class="dopamine-form" role="group" aria-label="Edit reward">
+                        <label for="editDopamineItem" class="sr-only">Reward</label>
+                        <input type="text" class="field" id="editDopamineItem">
+                        <label for="editDopamineDuration" class="sr-only">Minutes</label>
+                        <input type="number" class="field num" id="editDopamineDuration" min="5" max="120" style="width: 84px;">
+                        <span class="note" aria-hidden="true">min</span>
+                        <button class="btn btn-primary" type="button" onclick="saveDopamineEdit()">Save</button>
+                        <button class="btn" type="button" onclick="cancelDopamineEdit()">Cancel</button>
+                    </div>
+
+                    <ul class="dopamine-grid" id="dopamineList" aria-label="Rewards"></ul>
+                </div>
+            </section>
         </div>
-    </div>
+    </main>
 
     <script>
         let tasks = [];
@@ -847,7 +632,7 @@
         let draggedTaskId = null;
 
         // When the schedule starts, in minutes from midnight (default 9:00 AM).
-        // Set by the user via the "Schedule starts at" control - independent of
+        // Set by the user via the "Starts at" control - independent of
         // energy level, so it matches whatever hours someone actually works.
         let scheduleStartTime = 540;
 
@@ -876,6 +661,11 @@
             { id: 'dop9', text: 'Make a favorite snack', duration: 10 },
             { id: 'dop10', text: 'Take a relaxing shower/bath', duration: 20 }
         ];
+
+        // Task text is typed or spoken by the user; escape it before it goes into HTML.
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
 
         // Match a keyword as a whole word (not as a substring of a longer word),
         // so e.g. "call" doesn't match inside "recall" or "file" inside "profile".
@@ -985,6 +775,11 @@
             return 'High';
         }
 
+        // One, two or three filled bars for the effort a task takes
+        function pipsHtml(level) {
+            return `<span class="pips" aria-hidden="true"><i class="on"></i><i class="${level >= 2 ? 'on' : ''}"></i><i class="${level >= 3 ? 'on' : ''}"></i></span>`;
+        }
+
         function minutesToTimeInputValue(minutes) {
             const h = Math.floor(minutes / 60);
             const m = minutes % 60;
@@ -1016,26 +811,45 @@
                 setCommunicationMode(communicationMode);
 
                 if (dopamineSectionOpen) {
-                    const content = document.getElementById('dopamineContent');
-                    const icon = document.getElementById('dopamineToggleIcon');
-                    const header = document.querySelector('.dopamine-header');
-                    content.classList.add('active');
-                    icon.textContent = '▲';
-                    if (header) header.setAttribute('aria-expanded', 'true');
+                    document.getElementById('dopamineContent').classList.add('active');
+                    document.querySelector('.dopamine-header').setAttribute('aria-expanded', 'true');
                 }
-
-                renderTasks();
-                renderDopamineMenu();
-                generateSchedule();
-            } else {
-                renderDopamineMenu();
+            } else if (location.hash === '#example') {
+                loadExampleDay();
+                return;
             }
+            renderTasks();
+            renderDopamineMenu();
+            generateSchedule();
         }
 
         function saveData() {
             localStorage.setItem('ndPlannerData', JSON.stringify({
                 tasks, energyLevel, communicationMode, dopamineItems, dopamineSectionOpen, scheduleStartTime
             }));
+        }
+
+        // A sample day so a new visitor can see how a plan comes together.
+        // Built from the same estimators the brain dump uses.
+        function loadExampleDay() {
+            const lines = ['Write project report', "Reply to Sam's email", 'Call the pharmacy',
+                           'Tidy the desk', 'Prep lunch', 'Research flights for May'];
+            const base = Date.now();
+            tasks = lines.map((text, i) => ({
+                id: base + i,
+                text,
+                priority: i === 0 ? 'important' : 'flexible',
+                duration: estimateMinutes(text),
+                energyRequired: estimateEnergy(text),
+                completed: i === 1,
+                dopamine: false
+            }));
+            tasks.push({ id: base + lines.length, text: 'Listen to favorite playlist', priority: 'flexible',
+                         duration: 15, energyRequired: 1, completed: false, dopamine: true });
+            setEnergy('medium');
+            setCommunicationMode('verbal');
+            renderDopamineMenu();
+            saveData();
         }
 
         // Drag and drop handlers for schedule
@@ -1050,25 +864,25 @@
         function handleDragOver(event) {
             event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
-            // Add visual feedback
             if (event.currentTarget.classList.contains('timeline-row')) {
-                event.currentTarget.style.backgroundColor = '#F0F9FF';
+                event.currentTarget.classList.add('drag-over');
             }
         }
 
         function handleDragLeave(event) {
             if (event.currentTarget.classList.contains('timeline-row')) {
-                event.currentTarget.style.backgroundColor = '';
+                event.currentTarget.classList.remove('drag-over');
             }
+        }
+
+        function clearDragFeedback() {
+            document.querySelectorAll('.timeline-row.drag-over').forEach(row => row.classList.remove('drag-over'));
         }
 
         function handleDragEnd(event) {
             event.target.classList.remove('dragging');
             event.target.setAttribute('aria-grabbed', 'false');
-            // Remove all drag feedback
-            document.querySelectorAll('.timeline-row').forEach(row => {
-                row.style.backgroundColor = '';
-            });
+            clearDragFeedback();
         }
 
         function handleDrop(event, targetSlotStart) {
@@ -1106,20 +920,15 @@
 
             // Store the new scheduled time in the task
             task.scheduledTime = newStartTime;
-            
-            // Remove dragging class
+
             document.querySelectorAll('.timeline-event').forEach(el => {
                 el.classList.remove('dragging');
                 el.setAttribute('aria-grabbed', 'false');
             });
-            
-            // Remove drag feedback
-            document.querySelectorAll('.timeline-row').forEach(row => {
-                row.style.backgroundColor = '';
-            });
-            
+            clearDragFeedback();
+
             draggedTaskId = null;
-            
+
             // Regenerate schedule with new time
             generateSchedule();
             saveData();
@@ -1127,6 +936,7 @@
 
         // Keyboard navigation for tasks
         function handleTaskKeydown(event, taskId) {
+            if (event.target !== event.currentTarget) return;
             if (event.key === ' ' || event.key === 'Enter') {
                 event.preventDefault();
                 toggleTaskComplete(taskId);
@@ -1138,20 +948,9 @@
             }
         }
 
+        // The text area is always shown now; kept so older calls still work.
         function toggleTextInput() {
-            const area = document.getElementById('textInputArea');
-            const button = document.querySelector('.type-tasks-btn');
-            const isActive = area.classList.contains('active');
-            area.classList.toggle('active');
-            
-            if (area.classList.contains('active')) {
-                area.setAttribute('aria-hidden', 'false');
-                button.setAttribute('aria-expanded', 'true');
-                document.getElementById('taskInput').focus();
-            } else {
-                area.setAttribute('aria-hidden', 'true');
-                button.setAttribute('aria-expanded', 'false');
-            }
+            document.getElementById('taskInput').focus();
         }
 
         function addTask() {
@@ -1160,13 +959,13 @@
             if (!text) return;
 
             const lines = text.split(/\n|•|-/).map(line => line.trim()).filter(line => line);
-            
+
             lines.forEach((taskText, index) => {
                 setTimeout(() => {
                     // AI: Estimate duration and energy for each task
                     const estimatedMinutes = estimateMinutes(taskText);
                     const energyRequired = estimateEnergy(taskText);
-                    
+
                     tasks.push({
                         id: Date.now() + index,
                         text: taskText,
@@ -1176,7 +975,7 @@
                         completed: false,
                         dopamine: false
                     });
-                    
+
                     if (index === lines.length - 1) {
                         renderTasks();
                         generateSchedule();
@@ -1216,31 +1015,24 @@
 
         function setEnergy(level) {
             energyLevel = level;
-            document.querySelectorAll('.left-column .energy-btn').forEach(btn => {
-                btn.classList.remove('active');
-                btn.setAttribute('aria-checked', 'false');
+            const levels = ['low', 'medium', 'high'];
+            document.querySelectorAll('#energyButtons .energy-btn').forEach((btn, i) => {
+                const on = levels[i] === level;
+                btn.classList.toggle('active', on);
+                btn.setAttribute('aria-checked', on ? 'true' : 'false');
             });
-            const buttons = document.querySelectorAll('.left-column .energy-btn');
-            if (level === 'low') {
-                buttons[0].classList.add('active');
-                buttons[0].setAttribute('aria-checked', 'true');
-            }
-            if (level === 'medium') {
-                buttons[1].classList.add('active');
-                buttons[1].setAttribute('aria-checked', 'true');
-            }
-            if (level === 'high') {
-                buttons[2].classList.add('active');
-                buttons[2].setAttribute('aria-checked', 'true');
-            }
+            const cap = ENERGY_CAPACITY[levels.indexOf(level) + 1];
+            document.getElementById('energyNote').textContent = `Up to ${cap} min of tasks`;
             generateSchedule();
             saveData();
         }
 
         function renderTasks() {
             const container = document.getElementById('taskList');
+            document.getElementById('taskCount').textContent = tasks.length;
             if (tasks.length === 0) {
-                container.innerHTML = '<div class="empty-state" role="status" aria-live="polite">No tasks yet. Add some!</div>';
+                container.innerHTML = `<li class="empty-state" role="status">No tasks yet. Add a few above, or
+                    <br><button class="btn" type="button" onclick="loadExampleDay()">See an example day</button></li>`;
                 return;
             }
 
@@ -1248,53 +1040,41 @@
                 // Ensure task always has duration and energy
                 if (!task.duration) task.duration = 30;
                 if (!task.energyRequired) task.energyRequired = 2;
-                
-                const energyLabel = getEnergyLabel(task.energyRequired);
-                const priorityLabel = task.priority === 'important' ? 'Important' : 'Flexible';
+
+                const name = escapeHtml(task.text);
+                const important = task.priority === 'important';
                 const flaggedVerbal = communicationMode === 'nonverbal' && isVerbalTask(task.text);
 
                 return `
-                <div class="task-item ${task.priority} ${flaggedVerbal ? 'verbal-flag' : ''}" role="listitem">
-                    <div class="task-text">
-                        <span aria-label="Task: ${task.text}, estimated ${task.duration} minutes, ${energyLabel} energy required${flaggedVerbal ? ', requires talking' : ''}">${task.text}</span>
-                        <div class="task-meta">
-                            <span aria-hidden="true">⏱️</span>
-                            <select class="duration-select"
-                                onclick="event.stopPropagation()"
-                                onchange="setTaskDuration(${task.id}, this.value)"
-                                aria-label="Change estimated duration for ${task.text}">
-                                ${durationOptionsHtml(task.duration)}
-                            </select>
-                            <span aria-hidden="true">⚡</span>
-                            <div class="energy-toggle" role="group" aria-label="Change energy level for ${task.text}">
-                                <button type="button" class="energy-toggle-option low ${task.energyRequired === 1 ? 'active' : ''}" onclick="event.stopPropagation(); setTaskEnergy(${task.id}, 1)" aria-pressed="${task.energyRequired === 1}">Low</button>
-                                <button type="button" class="energy-toggle-option medium ${task.energyRequired === 2 ? 'active' : ''}" onclick="event.stopPropagation(); setTaskEnergy(${task.id}, 2)" aria-pressed="${task.energyRequired === 2}">Med</button>
-                                <button type="button" class="energy-toggle-option high ${task.energyRequired === 3 ? 'active' : ''}" onclick="event.stopPropagation(); setTaskEnergy(${task.id}, 3)" aria-pressed="${task.energyRequired === 3}">High</button>
-                            </div>
+                <li class="task-item ${task.priority} ${flaggedVerbal ? 'verbal-flag' : ''}">
+                    <div class="task-top">
+                        <span class="task-name">${name}</span>
+                        ${task.dopamine ? '<span class="pill accent">Reward</span>' : ''}
+                        ${flaggedVerbal ? '<span class="pill warning" title="This needs talking. Consider moving it to a day you can talk.">Needs talking</span>' : ''}
+                    </div>
+                    <div class="task-controls">
+                        <select class="field duration-select num"
+                            onchange="setTaskDuration(${task.id}, this.value)"
+                            aria-label="Time for ${name}">
+                            ${durationOptionsHtml(task.duration)}
+                        </select>
+                        <div class="seg small energy-toggle" role="group" aria-label="Effort for ${name}">
+                            <button type="button" onclick="setTaskEnergy(${task.id}, 1)" aria-pressed="${task.energyRequired === 1}">Low</button>
+                            <button type="button" onclick="setTaskEnergy(${task.id}, 2)" aria-pressed="${task.energyRequired === 2}">Med</button>
+                            <button type="button" onclick="setTaskEnergy(${task.id}, 3)" aria-pressed="${task.energyRequired === 3}">High</button>
                         </div>
-                        ${flaggedVerbal ? `<div class="verbal-flag-note" role="status">🔇 Requires talking — consider rescheduling to a day you can talk</div>` : ''}
+                        <div class="seg small priority-toggle" role="group" aria-label="Priority for ${name}">
+                            <button type="button" onclick="${important ? `togglePriority(${task.id})` : ''}" aria-pressed="${!important}">Flexible</button>
+                            <button type="button" class="on-accent" onclick="${important ? '' : `togglePriority(${task.id})`}" aria-pressed="${important}">Important</button>
+                        </div>
+                        <button class="btn-text danger btn-delete" type="button"
+                            onclick="if (confirm('Delete this task?')) deleteTask(${task.id})"
+                            aria-label="Delete ${name}">Delete</button>
                     </div>
-                    <div class="priority-toggle ${task.priority === 'flexible' ? 'flexible-selected' : 'important-selected'}" 
-                        onclick="togglePriority(${task.id})"
-                        role="switch"
-                        aria-label="Toggle priority. Current: ${priorityLabel}."
-                        aria-checked="${task.priority === 'important' ? 'true' : 'false'}">
-                        <button class="priority-toggle-option flexible" 
-                            type="button"
-                            onclick="event.stopPropagation(); togglePriority(${task.id})"
-                            aria-label="Set priority to flexible">Flexible</button>
-                        <button class="priority-toggle-option important" 
-                            type="button"
-                            onclick="event.stopPropagation(); togglePriority(${task.id})"
-                            aria-label="Set priority to important">Important</button>
-                    </div>
-                    <button class="btn-delete"
-                        onclick="if (confirm('Delete this task?')) deleteTask(${task.id})"
-                        aria-label="Delete task: ${task.text}">Delete</button>
-                </div>
+                </li>
                 `;
             }).join('');
-            
+
             // Save to ensure duration/energy are persisted
             saveData();
         }
@@ -1383,17 +1163,88 @@
             return { schedule, totalUsed, totalCapacity };
         }
 
+        // The greeting, the four figures and the "doesn't fit" list are all
+        // built from the same computeSchedule() result, so they always agree.
+        function renderSummary(schedule, totalUsed, totalCapacity) {
+            const hour = new Date().getHours();
+            document.getElementById('greeting').textContent =
+                hour < 12 ? 'Good morning.' : hour < 18 ? 'Good afternoon.' : 'Good evening.';
+
+            const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+            const scheduledIds = new Set(schedule.map(s => s.task.id));
+            const waiting = tasks.filter(t => !scheduledIds.has(t.id));
+            const flagged = schedule.filter(s => communicationMode === 'nonverbal' && isVerbalTask(s.task.text)).length;
+            const energyName = energyLevel.charAt(0).toUpperCase() + energyLevel.slice(1);
+
+            let finding;
+            if (tasks.length === 0) {
+                finding = `${today}. Nothing planned yet: say or type what's on your mind and it will be fitted to your energy.`;
+            } else {
+                finding = `${today}. ${energyName} energy: <strong>${totalUsed} of ${totalCapacity} minutes</strong> planned`;
+                finding += waiting.length
+                    ? `, and ${waiting.length} ${waiting.length === 1 ? 'task waits' : 'tasks wait'} for another day.`
+                    : '.';
+                if (flagged) finding += ` ${flagged} ${flagged === 1 ? 'task needs' : 'tasks need'} talking.`;
+            }
+            document.getElementById('dayFinding').innerHTML = finding;
+
+            // Planned
+            document.getElementById('plannedFigure').innerHTML = `${totalUsed}<small>/ ${totalCapacity} min</small>`;
+            const free = totalCapacity - totalUsed;
+            document.getElementById('plannedNote').textContent = free > 0 ? `${free} min free` : 'Full for today';
+            document.getElementById('budgetTrack').innerHTML = schedule
+                .map(s => `<span class="${s.task.completed ? 'done' : ''}" style="width: ${(s.duration / totalCapacity) * 100}%"></span>`)
+                .join('');
+
+            // Done
+            const doneCount = schedule.filter(s => s.task.completed).length;
+            document.getElementById('doneFigure').innerHTML = `${doneCount}<small>/ ${schedule.length} ${schedule.length === 1 ? 'task' : 'tasks'}</small>`;
+            const doneMinutes = schedule.filter(s => s.task.completed).reduce((sum, s) => sum + s.duration, 0);
+            document.getElementById('doneNote').textContent = schedule.length === 0
+                ? 'Tick a task in the schedule when it\'s done'
+                : doneCount === schedule.length ? 'All done. Rest is part of the plan.'
+                : doneCount ? `${doneMinutes} min done, ${totalUsed - doneMinutes} min to go`
+                : `${totalUsed} min to go`;
+
+            // Doesn't fit today
+            const waitingEl = document.getElementById('waitingList');
+            waitingEl.hidden = waiting.length === 0;
+            waitingEl.innerHTML = waiting.length ? `
+                <h3>Doesn't fit today's energy</h3>
+                <ul>${waiting.map(t => `<li><span>${escapeHtml(t.text)}</span><span class="num">${t.duration || 30} min</span></li>`).join('')}</ul>
+            ` : '';
+        }
+
+        function slotRowsHtml(minSlot, maxSlot) {
+            let html = '';
+            for (let slotStart = minSlot; slotStart < maxSlot; slotStart += SLOT_MINUTES) {
+                const isHourMark = slotStart % 60 === 0;
+                html += `<div class="timeline-row ${isHourMark ? 'hour-mark' : ''}"
+                    role="row"
+                    ondragover="handleDragOver(event)"
+                    ondrop="handleDrop(event, ${slotStart})"
+                    ondragleave="handleDragLeave(event)"
+                    aria-label="Time slot: ${formatTime(slotStart)}">
+                    <div class="timeline-hour" role="columnheader">${isHourMark ? formatTime(slotStart) : ''}</div>
+                    <div class="timeline-content" role="cell"></div>
+                </div>`;
+            }
+            return html;
+        }
+
         function generateSchedule() {
             const container = document.getElementById('schedule');
-            if (tasks.length === 0) {
-                container.innerHTML = '<div class="empty-state" role="status" aria-live="polite">Add tasks to generate your schedule!</div>';
-                return;
-            }
-
+            const legend = document.getElementById('scheduleLegend');
             const { schedule, totalUsed, totalCapacity } = computeSchedule();
+            renderSummary(schedule, totalUsed, totalCapacity);
 
             if (schedule.length === 0) {
-                container.innerHTML = '<div class="empty-state" role="status" aria-live="polite">No tasks fit your energy capacity today. Try adjusting your energy level!</div>';
+                legend.innerHTML = '';
+                const message = tasks.length === 0
+                    ? 'Your day appears here once you add tasks.'
+                    : 'Nothing fits today\'s energy. Try a shorter time on a task, or a higher energy level.';
+                container.innerHTML = slotRowsHtml(Math.floor(scheduleStartTime / SLOT_MINUTES) * SLOT_MINUTES, 21 * 60)
+                    + `<div class="timeline-empty" role="status">${message}</div>`;
                 return;
             }
 
@@ -1408,45 +1259,41 @@
             // The background grid: empty rows that act as drop targets and draw the
             // gridlines. Actual task cards are rendered separately as absolutely
             // positioned blocks so their height can reflect their real duration.
-            let html = '';
-            for (let slotStart = minSlot; slotStart < maxSlot; slotStart += SLOT_MINUTES) {
-                const isHourMark = slotStart % 60 === 0;
-                html += `<div class="timeline-row ${isHourMark ? 'hour-mark' : ''}"
-                    role="row"
-                    ondragover="handleDragOver(event)"
-                    ondrop="handleDrop(event, ${slotStart})"
-                    ondragleave="handleDragLeave(event)"
-                    aria-label="Time slot: ${formatTime(slotStart)}">
-                    <div class="timeline-hour" role="columnheader">${isHourMark ? formatTime(slotStart) : ''}</div>
-                    <div class="timeline-content" role="cell"></div>
-                </div>`;
-            }
+            let html = slotRowsHtml(minSlot, maxSlot);
 
             // Task blocks, one per event, height proportional to its actual duration
+            const kindsShown = new Set();
             schedule.forEach(event => {
                 const flaggedVerbal = communicationMode === 'nonverbal' && isVerbalTask(event.task.text);
                 const taskClass = flaggedVerbal ? 'verbal-flag' : (event.task.dopamine ? 'dopamine' : event.task.priority);
-                const energyLabel = getEnergyLabel(event.task.energyRequired || 2);
+                kindsShown.add(taskClass);
+                const energy = event.task.energyRequired || 2;
+                const energyLabel = getEnergyLabel(energy);
                 const taskId = event.task.id;
+                const name = escapeHtml(event.task.text);
 
-                const topPx = ((event.startTime - minSlot) / SLOT_MINUTES) * ROW_HEIGHT_PX;
-                const heightPx = Math.max(ROW_HEIGHT_PX - 4, (event.duration / SLOT_MINUTES) * ROW_HEIGHT_PX - 4);
+                const topPx = ((event.startTime - minSlot) / SLOT_MINUTES) * ROW_HEIGHT_PX + 2;
+                // As tall as the task really is (with a floor for a tappable row);
+                // short tasks switch to a one-line layout so they don't overlap the next one
+                const heightPx = Math.max(22, (event.duration / SLOT_MINUTES) * ROW_HEIGHT_PX - 4);
+                const compact = heightPx < 40;
 
                 // Fold the verbal-flag note into the time line rather than adding a
                 // 3rd line - a block's height is tied to its real duration, so an
                 // extra line here could visually collide with whatever task starts
                 // right after it instead of just growing safely.
+                const range = `<span class="range">${event.startTimeStr} – ${event.endTimeStr} ·</span>`;
                 const timeLine = flaggedVerbal
-                    ? `${event.startTimeStr} - ${event.endTimeStr} • ${event.duration} min • 🔇 Requires talking`
-                    : `${event.startTimeStr} - ${event.endTimeStr} • ${event.duration} min • ⚡ ${energyLabel}`;
+                    ? `${range} ${event.duration} min · Needs talking`
+                    : `${range} ${event.duration} min ${pipsHtml(energy)}`;
 
                 html += `
-                    <div class="timeline-event ${taskClass} ${event.task.completed ? 'completed' : ''}"
+                    <div class="timeline-event ${taskClass} ${compact ? 'compact' : ''} ${event.task.completed ? 'completed' : ''}"
                         style="top: ${topPx}px; height: ${heightPx}px;"
                         draggable="true"
                         role="button"
                         tabindex="0"
-                        aria-label="Task: ${event.task.text}, ${event.startTimeStr} to ${event.endTimeStr}, ${event.duration} minutes, ${energyLabel} energy${flaggedVerbal ? ', requires talking, consider rescheduling' : ''}. Drag to move or press space to toggle completion."
+                        aria-label="${name}, ${event.startTimeStr} to ${event.endTimeStr}, ${event.duration} minutes, ${energyLabel} effort${flaggedVerbal ? ', needs talking, consider rescheduling' : ''}. Drag to move or press space to mark done."
                         aria-grabbed="false"
                         ondragstart="handleDragStart(event, ${taskId})"
                         ondragend="handleDragEnd(event)"
@@ -1457,26 +1304,27 @@
                             ${event.task.completed ? 'checked' : ''}
                             onchange="toggleTaskComplete(${taskId})"
                             onclick="event.stopPropagation()"
-                            aria-label="Mark ${event.task.text} as ${event.task.completed ? 'incomplete' : 'complete'}">
+                            aria-label="Mark ${name} as ${event.task.completed ? 'not done' : 'done'}">
                         <div class="timeline-event-content">
-                            <div class="timeline-event-title">${event.task.text}</div>
+                            <div class="timeline-event-title">${name}</div>
                             <div class="timeline-event-time">${timeLine}</div>
                         </div>
                     </div>
                 `;
             });
 
-            // Show energy capacity used
-            html += `
-                <div style="margin-top: 20px; padding: 16px; background: var(--bg); border-radius: 8px; font-size: 0.85rem;" role="status" aria-live="polite">
-                    <strong>Energy Used:</strong> ${totalUsed} / ${totalCapacity} min
-                    <div style="margin-top: 8px; color: var(--text-secondary);">
-                        ${energyLevel === 'low' ? 'Low energy max: 80min' : energyLevel === 'medium' ? 'Medium energy max: 120min' : 'High energy max: 300min'}
-                    </div>
-                </div>
-            `;
-
             container.innerHTML = html;
+
+            // Legend: only the kinds on screen, each swatch drawn like its block
+            const kinds = [
+                ['flexible', 'Flexible', 'background: var(--well)'],
+                ['important', 'Important', 'background: var(--accent-tint); border-left: 3px solid var(--accent)'],
+                ['dopamine', 'Reward', 'background: var(--raised); border: 1px solid var(--control)'],
+                ['verbal-flag', 'Needs talking', 'background: var(--warning-bg); border: 1px solid var(--warning-edge)']
+            ];
+            legend.innerHTML = kinds.filter(([k]) => kindsShown.has(k))
+                .map(([, label, style]) => `<span><i style="${style}"></i>${label}</span>`).join('')
+                + `<span>${pipsHtml(3)} Effort</span>`;
         }
 
         function formatTime(minutes) {
@@ -1491,36 +1339,19 @@
             communicationMode = mode;
             const verbalBtn = document.getElementById('verbalBtn');
             const nonverbalBtn = document.getElementById('nonverbalBtn');
-            
-            verbalBtn.classList.remove('active');
-            nonverbalBtn.classList.remove('active');
-            verbalBtn.setAttribute('aria-checked', 'false');
-            nonverbalBtn.setAttribute('aria-checked', 'false');
-            
-            if (mode === 'verbal') {
-                verbalBtn.classList.add('active');
-                verbalBtn.setAttribute('aria-checked', 'true');
-            } else {
-                nonverbalBtn.classList.add('active');
-                nonverbalBtn.setAttribute('aria-checked', 'true');
-            }
-            
+
+            verbalBtn.classList.toggle('active', mode === 'verbal');
+            nonverbalBtn.classList.toggle('active', mode !== 'verbal');
+            verbalBtn.setAttribute('aria-checked', mode === 'verbal' ? 'true' : 'false');
+            nonverbalBtn.setAttribute('aria-checked', mode !== 'verbal' ? 'true' : 'false');
+
+            // Non-verbal days are text only: the voice button goes away
             const voiceBtn = document.getElementById('voiceBtn');
-            const orDivider = document.querySelector('.or-divider');
-            const textInputArea = document.getElementById('textInputArea');
-            
-            if (mode === 'nonverbal') {
-                voiceBtn.style.display = 'none';
-                orDivider.style.display = 'none';
-                textInputArea.classList.add('active');
-                textInputArea.setAttribute('aria-hidden', 'false');
-            } else {
-                voiceBtn.style.display = 'flex';
-                orDivider.style.display = 'block';
-                if (!textInputArea.classList.contains('active')) {
-                    textInputArea.setAttribute('aria-hidden', 'true');
-                }
-            }
+            voiceBtn.hidden = mode === 'nonverbal';
+            if (mode === 'nonverbal' && voiceBtn.classList.contains('recording')) toggleVoice();
+            document.getElementById('communicationNote').textContent = mode === 'nonverbal'
+                ? 'Text only. Calls are flagged.'
+                : 'Voice input is on';
 
             // Refresh highlights for tasks that require talking (e.g. phone calls)
             renderTasks();
@@ -1530,65 +1361,57 @@
 
         function toggleDopamineSection() {
             const content = document.getElementById('dopamineContent');
-            const icon = document.getElementById('dopamineToggleIcon');
             const header = document.querySelector('.dopamine-header');
             dopamineSectionOpen = !dopamineSectionOpen;
-            
-            if (dopamineSectionOpen) {
-                content.classList.add('active');
-                icon.textContent = '▲';
-                header.setAttribute('aria-expanded', 'true');
-            } else {
-                content.classList.remove('active');
-                icon.textContent = '▼';
-                header.setAttribute('aria-expanded', 'false');
-            }
+            content.classList.toggle('active', dopamineSectionOpen);
+            header.setAttribute('aria-expanded', dopamineSectionOpen ? 'true' : 'false');
             saveData();
         }
 
+        const ICON_EDIT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5l3 3L5 14H2v-3z"/></svg>';
+        const ICON_DELETE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 9h5.8l.6-9"/></svg>';
+
         function renderDopamineMenu() {
             const container = document.getElementById('dopamineList');
-            container.innerHTML = dopamineItems.map(item => `
-                <div class="task-item dopamine-item" 
-                    role="listitem"
+            document.getElementById('dopamineCount').textContent = dopamineItems.length;
+            if (dopamineItems.length === 0) {
+                container.innerHTML = '<li class="empty-state" style="grid-column: 1 / -1;">No rewards on the menu. Add one that gives you a lift.</li>';
+                return;
+            }
+            container.innerHTML = dopamineItems.map(item => {
+                const name = escapeHtml(item.text);
+                return `
+                <li class="dopamine-item"
                     onclick="addDopamineToSchedule('${item.id}', event)"
                     tabindex="0"
-                    aria-label="Dopamine activity: ${item.text}, ${item.duration} minutes. Click to add to schedule."
-                    onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); addDopamineToSchedule('${item.id}', event); }">
-                    <div class="task-text">${item.text}</div>
-                    <span style="color: var(--text-secondary); font-size: 0.78rem; margin-right: 7px;" aria-hidden="true">${item.duration} min</span>
-                    <button onclick="event.stopPropagation(); editDopamineItem('${item.id}')" 
-                        style="padding: 4px 8px; background: transparent; border: none; cursor: pointer; font-size: 0.95rem;" 
-                        aria-label="Edit ${item.text}"
-                        title="Edit">✏️</button>
-                    <button class="btn-delete" 
-                        onclick="event.stopPropagation(); removeDopamineItem('${item.id}')"
-                        aria-label="Delete ${item.text}">Delete</button>
-                </div>
-            `).join('');
+                    aria-label="${name}, ${item.duration} minutes. Press to add to today."
+                    onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')) { event.preventDefault(); addDopamineToSchedule('${item.id}', event); }">
+                    <div class="task-text">${name}<span>${item.duration} min</span></div>
+                    <button class="icon-btn" type="button" onclick="event.stopPropagation(); editDopamineItem('${item.id}')"
+                        aria-label="Edit ${name}" title="Edit">${ICON_EDIT}</button>
+                    <button class="icon-btn danger btn-delete" type="button" onclick="event.stopPropagation(); removeDopamineItem('${item.id}')"
+                        aria-label="Delete ${name}" title="Delete">${ICON_DELETE}</button>
+                </li>`;
+            }).join('');
         }
 
         function toggleDopamineMenu() {
             const input = document.getElementById('dopamineInput');
             const button = document.querySelector('.dopamine-add-btn');
-            const isVisible = input.style.display !== 'none';
-            input.style.display = isVisible ? 'none' : 'block';
-            
-            if (input.style.display === 'block') {
-                button.setAttribute('aria-expanded', 'true');
-                if (!dopamineSectionOpen) {
-                    toggleDopamineSection();
-                }
+            const show = input.style.display !== 'flex';
+            input.style.display = show ? 'flex' : 'none';
+            button.setAttribute('aria-expanded', show ? 'true' : 'false');
+
+            if (show) {
+                if (!dopamineSectionOpen) toggleDopamineSection();
                 document.getElementById('customDopamineItem').focus();
-            } else {
-                button.setAttribute('aria-expanded', 'false');
             }
         }
 
         function addCustomDopamineItem() {
             const input = document.getElementById('customDopamineItem');
             const text = input.value.trim();
-            
+
             if (!text) return;
 
             dopamineItems.push({
@@ -1600,6 +1423,7 @@
 
             input.value = '';
             document.getElementById('dopamineInput').style.display = 'none';
+            document.querySelector('.dopamine-add-btn').setAttribute('aria-expanded', 'false');
             renderDopamineMenu();
             saveData();
         }
@@ -1609,12 +1433,12 @@
             if (!item) return;
 
             editingDopamineId = itemId;
-            
-            document.getElementById('dopamineEditInput').style.display = 'block';
+
+            document.getElementById('dopamineEditInput').style.display = 'flex';
             document.getElementById('editDopamineItem').value = item.text;
             document.getElementById('editDopamineDuration').value = item.duration;
             document.getElementById('editDopamineItem').focus();
-            
+
             document.getElementById('dopamineInput').style.display = 'none';
         }
 
@@ -1663,15 +1487,13 @@
             renderTasks();
             generateSchedule();
             saveData();
-            
+
             // Visual feedback
             if (event) {
                 const targetElement = event.target.closest('.dopamine-item');
                 if (targetElement) {
-                    targetElement.style.background = '#D1FAE5';
-                    setTimeout(() => {
-                        renderDopamineMenu();
-                    }, 300);
+                    targetElement.classList.add('added');
+                    setTimeout(() => targetElement.classList.remove('added'), 600);
                 }
             }
         }
@@ -1682,14 +1504,19 @@
             saveData();
         }
 
+        function setVoiceStatus(text) {
+            document.getElementById('voiceStatus').textContent = text;
+        }
+
         function toggleVoice() {
             if (!('webkitSpeechRecognition' in window)) {
-                alert('Voice input is not supported in your browser. Try Chrome!');
+                setVoiceStatus('Voice input needs Chrome or Edge. You can type your tasks instead.');
                 return;
             }
 
             const btn = document.getElementById('voiceBtn');
-            
+            const label = document.getElementById('voiceLabel');
+
             if (!recognition) {
                 recognition = new webkitSpeechRecognition();
                 recognition.continuous = true;
@@ -1715,86 +1542,53 @@
 
                 recognition.onerror = (event) => {
                     console.log('Speech recognition error:', event.error);
-                    btn.classList.remove('recording');
-                    
+                    stopRecordingUi();
+
                     if (event.error === 'no-speech') {
-                        alert('No speech detected. Try speaking louder or closer to the microphone.');
+                        setVoiceStatus('No speech heard. Try again a little closer to the microphone.');
                     } else if (event.error === 'not-allowed') {
-                        alert('Microphone access denied. Please allow microphone access and try again.');
+                        setVoiceStatus('Microphone access is blocked. Allow it in your browser, or type instead.');
                     }
                 };
 
                 recognition.onend = () => {
-                    btn.classList.remove('recording');
+                    stopRecordingUi();
                 };
+            }
 
-                recognition.onspeechstart = () => {
-                    console.log('Speech detected!');
-                };
-
-                recognition.onspeechend = () => {
-                    console.log('Speech ended');
-                };
+            function stopRecordingUi() {
+                btn.classList.remove('recording');
+                btn.setAttribute('aria-pressed', 'false');
+                label.textContent = 'Speak tasks';
             }
 
             if (btn.classList.contains('recording')) {
                 recognition.stop();
-                btn.classList.remove('recording');
-                btn.setAttribute('aria-pressed', 'false');
-                btn.setAttribute('aria-label', 'Start voice recording. Click to record your tasks using your microphone.');
-                
-                const area = document.getElementById('textInputArea');
-                area.classList.add('active');
-                area.setAttribute('aria-hidden', 'false');
-                
-                const originalHTML = btn.innerHTML;
-                btn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill: white; width: 40px; height: 40px;" aria-hidden="true">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                </svg>`;
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
-                }, 1500);
+                stopRecordingUi();
+                setVoiceStatus('Check the list above, then add it to today.');
             } else {
                 recognition.start();
                 btn.classList.add('recording');
                 btn.setAttribute('aria-pressed', 'true');
-                btn.setAttribute('aria-label', 'Stop voice recording. Click to stop recording.');
-                
-                const area = document.getElementById('textInputArea');
-                area.classList.add('active');
-                area.setAttribute('aria-hidden', 'false');
+                label.textContent = 'Stop';
+                setVoiceStatus('Listening. Say each task, or join them with "and".');
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const customInput = document.getElementById('customDopamineItem');
-            if (customInput) {
-                customInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addCustomDopamineItem();
-                    }
-                });
+        document.getElementById('customDopamineItem').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustomDopamineItem();
             }
-            
-            const editInput = document.getElementById('editDopamineItem');
-            const editDuration = document.getElementById('editDopamineDuration');
-            if (editInput) {
-                editInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        saveDopamineEdit();
-                    }
-                });
-            }
-            if (editDuration) {
-                editDuration.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        saveDopamineEdit();
-                    }
-                });
-            }
+        });
+
+        ['editDopamineItem', 'editDopamineDuration'].forEach(id => {
+            document.getElementById(id).addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveDopamineEdit();
+                }
+            });
         });
 
         document.getElementById('taskInput').addEventListener('keypress', (e) => {

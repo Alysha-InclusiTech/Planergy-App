@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planergy app screens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+    <style>
+        /* ------------------------------------------------------------------
+           Design tokens, shared with the website (index.html).
+           Each maps onto Flutter: ColorScheme, TextTheme and a few constants.
+           ------------------------------------------------------------------ */
+        :root {
+            --ground: #ffffff;        /* Scaffold background */
+            --surface: #f6f7f5;       /* cards / panels */
+            --raised: #ffffff;        /* a white card inside a panel */
+            --well: #eceeea;          /* segmented track, flexible blocks */
+            --border: #e4e6e1;
+            --rule: #eef0ec;
+            --control: #cfd2cc;
+            --text: #1f201d;
+            --muted: #5c5d59;
+            --accent: #1b6e66;        /* the one hue: planned time, important */
+            --accent-tint: #e1efec;
+            --primary: #1f201d;       /* filled button */
+            --negative: #b42318;
+            --warning-bg: #fffbeb; --warning-edge: #f3d27a; --warning-ink: #8a3c0c;
+
+            --font: "Instrument Sans", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+            --font-greeting: "Instrument Serif", Georgia, serif;
+
+            --radius-card: 20px;
+            --radius-row: 14px;
+            --gap: 12px;
+            --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--surface);
+            color: var(--text);
+            font: 400 15px/22px var(--font);
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, p, ul { margin: 0; padding: 0; }
+        ul { list-style: none; }
+        button, input, select, textarea { font: inherit; color: inherit; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .num { font-variant-numeric: tabular-nums; }
+        .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+        /* ---------- the board the phones sit on ---------- */
+        .board { max-width: 1300px; margin: 0 auto; padding: 32px 24px 96px; }
+        .board-head { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 40px; }
+        .board-head h1 { font-size: 24px; line-height: 30px; font-weight: 600; }
+        .board-head p { margin-top: 6px; max-width: 70ch; color: var(--muted); }
+        .board-head .btn { margin-left: auto; }
+
+        .screens {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 390px);
+            justify-content: center;
+            gap: 56px 40px;
+        }
+        .screen-block { scroll-margin-top: 24px; }
+        .screen-caption { margin-top: 16px; }
+        .screen-caption h2 { font-size: 16px; font-weight: 600; }
+        .screen-caption p { margin-top: 4px; color: var(--muted); font-size: 14px; line-height: 20px; }
+        .screen-caption ul { margin-top: 10px; font-size: 13px; line-height: 19px; color: var(--muted); }
+        .screen-caption li { padding-left: 14px; position: relative; }
+        .screen-caption li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 4px; height: 4px; border-radius: 50%; background: var(--control); }
+        .screen-caption code { font-size: 12px; color: var(--text); background: var(--well); padding: 1px 5px; border-radius: 4px; }
+
+        /* ---------- a phone ---------- */
+        .phone {
+            position: relative;
+            width: 390px;
+            height: 844px;
+            border-radius: 44px;
+            background: var(--ground);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .statusbar { height: 44px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 14px; font-weight: 600; }
+        .appbar { height: 48px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 20px; }
+        .appbar .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; }
+        .appbar .end { margin-left: auto; display: flex; gap: 4px; }
+        .body { flex: 1; overflow-y: auto; padding: 8px 20px 24px; }
+        .footer { flex: none; padding: 12px 20px 30px; background: var(--ground); border-top: 1px solid var(--rule); }
+
+        .title { font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+        .greeting { font: 400 38px/1.05 var(--font-greeting); letter-spacing: -0.01em; }
+        .lede { margin-top: 8px; color: var(--muted); }
+        .lede strong { color: var(--text); font-weight: 500; }
+        .section-label { display: flex; align-items: center; gap: 8px; margin: 24px 0 10px; font-size: 15px; font-weight: 600; }
+        .note { font-size: 13px; line-height: 18px; color: var(--muted); }
+
+        .card { background: var(--surface); border-radius: var(--radius-card); padding: 16px; }
+        .card + .card { margin-top: var(--gap); }
+        .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+
+        .count {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px;
+            background: var(--well); font-size: 12px; font-weight: 500; color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---------- controls ---------- */
+        .seg { display: flex; padding: 3px; border-radius: 999px; background: var(--well); }
+        .seg button {
+            flex: 1; height: 40px; padding: 0 10px; border: 0; border-radius: 999px;
+            background: transparent; color: var(--muted); font-weight: 500; white-space: nowrap; cursor: pointer;
+            transition: background-color 150ms var(--ease), color 150ms var(--ease);
+        }
+        .seg button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+        .seg.small button { height: 30px; font-size: 13px; padding: 0 8px; }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            height: 44px; padding: 0 20px; border-radius: 999px;
+            border: 1px solid var(--control); background: var(--raised);
+            font-weight: 500; white-space: nowrap; cursor: pointer;
+            transition: border-color 150ms var(--ease), background-color 150ms var(--ease), transform 120ms var(--ease);
+        }
+        .btn:hover { border-color: var(--text); }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { width: 100%; height: 52px; background: var(--primary); border-color: var(--primary); color: #fff; font-size: 16px; }
+        .btn-primary:hover { background: #3a3b37; }
+        .btn-small { height: 34px; padding: 0 14px; font-size: 14px; }
+        .icon-btn {
+            width: 44px; height: 44px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+            border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer;
+            transition: background-color 150ms var(--ease), color 150ms var(--ease);
+        }
+        .icon-btn:hover { background: var(--well); color: var(--text); }
+        svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+        .field {
+            width: 100%; min-height: 48px; padding: 12px 16px;
+            border: 1px solid var(--control); border-radius: 16px; background: var(--raised); line-height: 22px;
+        }
+        .field::placeholder { color: #6b6c68; }
+        .field:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+
+        /* energy choice cards on onboarding */
+        .choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .choice {
+            display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+            padding: 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--raised);
+            text-align: left; cursor: pointer;
+            transition: border-color 150ms var(--ease), background-color 150ms var(--ease);
+        }
+        .choice strong { font-weight: 500; }
+        .choice span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+        .choice[aria-pressed="true"] span { color: var(--accent); }
+
+        /* energy pips: the product's mark for effort */
+        .pips { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; flex: none; }
+        .pips i { width: 3px; border-radius: 1px; background: var(--control); }
+        .pips i:nth-child(1) { height: 6px; } .pips i:nth-child(2) { height: 9px; } .pips i:nth-child(3) { height: 12px; }
+        .pips i.on { background: currentColor; }
+        .pips.big { height: 18px; gap: 3px; } .pips.big i { width: 5px; border-radius: 2px; }
+        .pips.big i:nth-child(1) { height: 8px; } .pips.big i:nth-child(2) { height: 13px; } .pips.big i:nth-child(3) { height: 18px; }
+
+        /* budget bar */
+        .budget { display: flex; gap: 2px; height: 8px; border-radius: 999px; background: var(--well); overflow: hidden; }
+        .budget span { background: var(--accent); }
+        .budget span.done { background: var(--text); }
+        .budget-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        .budget-row .figure { font-size: 24px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+        .budget-row .figure small { font-size: 14px; color: var(--muted); letter-spacing: 0; }
+
+        /* task rows */
+        .rows { display: flex; flex-direction: column; gap: 8px; }
+        .row {
+            display: flex; align-items: center; gap: 12px;
+            min-height: 60px; padding: 10px 8px 10px 14px;
+            border-radius: var(--radius-row); background: var(--raised); border: 1px solid var(--border);
+        }
+        .row.important { border-left: 3px solid var(--accent); padding-left: 12px; }
+        .row.flag { background: var(--warning-bg); border-color: var(--warning-edge); }
+        .row-main { flex: 1; min-width: 0; }
+        .row-name { overflow-wrap: anywhere; }
+        .row-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .pill {
+            display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px;
+            font-size: 12px; font-weight: 500; white-space: nowrap; flex: none;
+        }
+        .pill.warning { background: var(--warning-bg); color: var(--warning-ink); border: 1px solid var(--warning-edge); }
+        .pill.accent { background: var(--accent-tint); color: var(--accent); }
+        .star { color: var(--muted); }
+        .star[aria-pressed="true"] { color: var(--accent); }
+        .star[aria-pressed="true"] svg.i { fill: currentColor; }
+        .empty { padding: 16px; border: 1px dashed var(--control); border-radius: var(--radius-row); color: var(--muted); }
+
+        /* add screen */
+        .composer textarea { min-height: 132px; resize: none; display: block; }
+        .composer-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+        .mic {
+            width: 56px; height: 56px; flex: none; border-radius: 50%; border: 0;
+            background: var(--accent-tint); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: transform 120ms var(--ease), background-color 150ms var(--ease);
+        }
+        .mic:active { transform: scale(0.94); }
+        .mic svg { width: 24px; height: 24px; fill: currentColor; }
+        .mic.recording { background: #fdecea; color: var(--negative); }
+        .composer-row .btn { flex: 1; }
+
+        /* day timeline */
+        .timeline { position: relative; background: var(--raised); border-radius: var(--radius-row); padding: 6px 8px 6px 0; }
+        .slot { height: 40px; display: flex; }
+        .slot.hour { box-shadow: inset 0 1px 0 var(--rule); } /* hour gridline; taste-skill-ignore */
+        .slot-time { width: 62px; flex: none; padding: 3px 8px 0 0; text-align: right; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .block {
+            position: absolute; left: 62px; right: 8px;
+            display: flex; align-items: center; gap: 8px; padding: 0 10px;
+            border-radius: 8px; border: 1px solid transparent; background: var(--well); overflow: hidden;
+        }
+        .block.important { background: var(--accent-tint); border-left: 3px solid var(--accent); }
+        .block.dopamine { background: var(--raised); border-color: var(--control); }
+        .block.flag { background: var(--warning-bg); border-color: var(--warning-edge); }
+        .block.done { opacity: 0.55; } .block.done .b-name { text-decoration: line-through; }
+        .block input { width: 16px; height: 16px; flex: none; accent-color: var(--accent); margin: 0; }
+        .b-text { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: baseline; }
+        .b-text.two { flex-direction: column; gap: 0; }
+        .b-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .b-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+        /* week */
+        .week { display: flex; flex-direction: column; gap: 8px; }
+        .day {
+            padding: 12px 14px; border-radius: var(--radius-row); background: var(--raised); border: 1px solid var(--border);
+        }
+        .day.today { border-color: var(--accent); }
+        .day-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+        .day-top strong { font-weight: 600; }
+        .day-top .end { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .day-tasks { margin-top: 8px; font-size: 13px; line-height: 18px; color: var(--muted); }
+        .day-tasks b { color: var(--text); font-weight: 500; }
+
+        /* rewards */
+        .reward-group + .reward-group { margin-top: 20px; }
+        .reward .row-meta .fits { color: var(--accent); }
+
+        /* tab bar */
+        .tabbar { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 8px 26px; border-top: 1px solid var(--rule); background: var(--ground); }
+        .tab {
+            display: flex; flex-direction: column; align-items: center; gap: 2px; height: 52px; justify-content: center;
+            border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 14px;
+        }
+        .tab[aria-current="page"] { color: var(--text); }
+        .tab[aria-current="page"] .tab-icon { background: var(--well); }
+        .tab-icon { width: 52px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+
+        .progress { display: flex; gap: 4px; margin: 4px 0 20px; }
+        .progress i { flex: 1; height: 4px; border-radius: 999px; background: var(--well); }
+        .progress i.on { background: var(--text); }
+
+        @media (max-width: 460px) {
+            .board { padding: 20px 16px 64px; }
+            .screens { grid-template-columns: 1fr; }
+            .phone { width: 100%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
+        }
+    </style>
+</head>
+<body>
+<main class="board">
+    <header class="board-head">
+        <div>
+            <h1>Planergy app screens</h1>
+            <p>Five phone screens at 390 × 844, all working from one shared plan: change something on one screen and the others update. The notes under each one name the Flutter widgets to build it with.</p>
+        </div>
+        <button class="btn btn-small" type="button" onclick="resetExample()">Reset to the example day</button>
+    </header>
+
+    <div class="screens">
+        <!-- 1. Onboarding -->
+        <section class="screen-block" id="s-onboarding" aria-labelledby="cap-1">
+            <div class="phone">
+                <div class="statusbar" aria-hidden="true"><span>9:41</span><span></span></div>
+                <div class="appbar"><div class="brand" data-brand></div></div>
+                <div class="body" id="onboarding"></div>
+                <div class="footer"><button class="btn btn-primary" type="button" onclick="go('s-add')">Continue</button></div>
+            </div>
+            <div class="screen-caption">
+                <h2 id="cap-1">Onboarding</h2>
+                <p>Three check-in questions. Each answer says what it changes, so the choice means something.</p>
+                <ul>
+                    <li>Energy as three <code>ChoiceChip</code>-like cards in a <code>Row</code> of <code>Expanded</code>, showing the minutes each allows</li>
+                    <li>Work hours and talking as <code>SegmentedButton</code>; "Flexible" reveals a <code>showTimePicker</code> start time</li>
+                    <li>Primary button pinned in <code>Scaffold.bottomNavigationBar</code> or a <code>SafeArea</code> footer</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 2. Add tasks -->
+        <section class="screen-block" id="s-add" aria-labelledby="cap-2">
+            <div class="phone">
+                <div class="statusbar" aria-hidden="true"><span>9:41</span><span></span></div>
+                <div class="appbar"><div class="brand" data-brand></div></div>
+                <div class="body" id="add"></div>
+                <div class="footer"><button class="btn btn-primary" type="button" id="addFooterBtn" onclick="go('s-review')">Review tasks</button></div>
+                <nav class="tabbar" data-tabs="s-add" aria-label="Main"></nav>
+            </div>
+            <div class="screen-caption">
+                <h2 id="cap-2">Add tasks</h2>
+                <p>A brain dump. Speak or type; every line becomes a task with a guessed time and effort you can see straight away.</p>
+                <ul>
+                    <li>Multi-line <code>TextField</code> (maxLines: null) beside a 56px round mic button; hide the mic on non-verbal days</li>
+                    <li>Voice via the <code>speech_to_text</code> package, split on new lines and "and"</li>
+                    <li>"Just added" list of <code>ListTile</code>s with time and effort pips; swipe to delete with <code>Dismissible</code></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 3. Review -->
+        <section class="screen-block" id="s-review" aria-labelledby="cap-3">
+            <div class="phone">
+                <div class="statusbar" aria-hidden="true"><span>9:41</span><span></span></div>
+                <div class="appbar"><div class="brand" data-brand></div></div>
+                <div class="body" id="review"></div>
+                <div class="footer"><button class="btn btn-primary" type="button" onclick="go('s-plan')">Build my day</button></div>
+                <nav class="tabbar" data-tabs="s-review" aria-label="Main"></nav>
+            </div>
+            <div class="screen-caption">
+                <h2 id="cap-3">Review</h2>
+                <p>Important tasks are placed first, so the screen splits into the two groups and shows live how much of today's energy they fill.</p>
+                <ul>
+                    <li>Budget card on top: <code>LinearProgressIndicator</code> or a <code>Row</code> of segments sized by minutes</li>
+                    <li>Two sections; the star <code>IconButton</code> moves a task between them</li>
+                    <li>Tap the time or effort to open a <code>showModalBottomSheet</code> with the presets</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 4. Plan: day and week -->
+        <section class="screen-block" id="s-plan" aria-labelledby="cap-4">
+            <div class="phone">
+                <div class="statusbar" aria-hidden="true"><span>9:41</span><span></span></div>
+                <div class="appbar"><div class="brand" data-brand></div></div>
+                <div class="body" id="plan"></div>
+                <nav class="tabbar" data-tabs="s-plan" aria-label="Main"></nav>
+            </div>
+            <div class="screen-caption">
+                <h2 id="cap-4">Day and week</h2>
+                <p>Day: the timeline, each block as long as the task. Week: the next seven days, with what didn't fit today rolled forward.</p>
+                <ul>
+                    <li>Day/Week <code>SegmentedButton</code> switching two views</li>
+                    <li>Day timeline as a <code>Stack</code> of <code>Positioned</code> blocks over hour rows; <code>LongPressDraggable</code> + <code>DragTarget</code> to move</li>
+                    <li>Week as a <code>ListView</code> of day cards, each with its own budget bar</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 5. Dopamine menu -->
+        <section class="screen-block" id="s-rewards" aria-labelledby="cap-5">
+            <div class="phone">
+                <div class="statusbar" aria-hidden="true"><span>9:41</span><span></span></div>
+                <div class="appbar"><div class="brand" data-brand></div></div>
+                <div class="body" id="rewards"></div>
+                <nav class="tabbar" data-tabs="s-rewards" aria-label="Main"></nav>
+            </div>
+            <div class="screen-caption">
+                <h2 id="cap-5">Dopamine menu</h2>
+                <p>Small rewards, grouped by length. Each row says whether it still fits today before you add it.</p>
+                <ul>
+                    <li>Add-your-own <code>TextField</code> with a trailing add button at the top</li>
+                    <li>Grouped <code>ListView</code>; the trailing "Add" becomes "Added" for a moment, then the row shows its time</li>
+                    <li>Long-press a reward to edit or delete it (<code>showModalBottomSheet</code>)</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+    // ---------------- planner logic (same as the website) ----------------
+    const SLOT_MINUTES = 30;
+    const ROW_PX = 40;
+    const ENERGY_CAPACITY = { 1: 80, 2: 120, 3: 300 };
+    const ENERGY_NUM = { low: 1, medium: 2, high: 3 };
+    const DEFAULT_REWARDS = [
+        { id: 'dop1', text: 'Watch favorite comfort show', duration: 20 },
+        { id: 'dop2', text: 'Listen to favorite playlist', duration: 15 },
+        { id: 'dop3', text: 'Take a short walk outside', duration: 15 },
+        { id: 'dop4', text: 'Pet/cuddle with pet', duration: 10 },
+        { id: 'dop5', text: 'Read a chapter of fun book', duration: 20 },
+        { id: 'dop6', text: 'Scroll favorite social media', duration: 10 },
+        { id: 'dop7', text: 'Play a quick game', duration: 15 },
+        { id: 'dop8', text: 'Do a puzzle or coloring', duration: 20 },
+        { id: 'dop9', text: 'Make a favorite snack', duration: 10 },
+        { id: 'dop10', text: 'Take a relaxing shower/bath', duration: 20 }
+    ];
+
+    let state;
+    let planView = 'day';
+    let justAdded = [];
+    let recognition = null;
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function matchesKeyword(t, k) { return k.includes(' ') ? t.includes(k) : new RegExp(`\\b${k}\\b`).test(t); }
+    function estimateEnergy(text) {
+        const t = text.toLowerCase();
+        if (['email', 'reply', 'text', 'message', 'pay', 'confirm', 'drink', 'water', 'snack', 'check', 'scroll', 'watch', 'listen'].some(k => matchesKeyword(t, k))) return 1;
+        if (['build', 'code', 'develop', 'design', 'create', 'research', 'deep work', 'project', 'presentation', 'analyze', 'write', 'meeting', 'call', 'interview'].some(k => matchesKeyword(t, k))) return 3;
+        return 2;
+    }
+    function estimateMinutes(text) {
+        const t = text.toLowerCase();
+        if (['drink water', 'drinking water', 'water break', 'quick break'].some(k => matchesKeyword(t, k))) return 5;
+        if (['email', 'reply', 'text', 'message', 'pay', 'confirm', 'snack', 'check', 'quick', 'call', 'phone'].some(k => matchesKeyword(t, k))) return 10;
+        if (['tidy', 'clean', 'shower', 'prep', 'prepare', 'walk', 'stretch', 'organize', 'sort', 'file'].some(k => matchesKeyword(t, k))) return 20;
+        if (['meeting', 'lunch', 'dinner', 'cook', 'plan', 'write', 'report', 'record', 'review', 'read', 'study', 'pack', 'packing'].some(k => matchesKeyword(t, k))) {
+            return (matchesKeyword(t, 'pack') || matchesKeyword(t, 'packing')) ? 40 : 45;
+        }
+        if (['build', 'code', 'develop', 'design', 'create', 'research', 'deep work', 'project', 'presentation', 'analyze'].some(k => matchesKeyword(t, k))) return 90;
+        const e = estimateEnergy(text);
+        return e === 1 ? 15 : e === 3 ? 60 : 30;
+    }
+    function isVerbalTask(text) {
+        const t = text.toLowerCase();
+        return ['call', 'phone', 'ring up', 'voicemail', 'speak to', 'speak with', 'talk to', 'talk with'].some(k => matchesKeyword(t, k));
+    }
+    function formatTime(m) {
+        const h = Math.floor(m / 60), mm = m % 60;
+        return `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(mm).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+    }
+    function startTime() { return state.workHours === 'nine-to-five' ? 540 : state.scheduleStartTime; }
+
+    // Same placement rules as the website: important first, 15-minute breaks, skip what doesn't fit
+    function computeSchedule(list, capacity) {
+        const totalCapacity = capacity || ENERGY_CAPACITY[ENERGY_NUM[state.energyLevel]];
+        const sorted = [...list].sort((a, b) => (b.priority === 'important') - (a.priority === 'important'));
+        const schedule = [];
+        let current = startTime(), used = 0;
+        for (const task of sorted) {
+            const d = task.duration || 30;
+            if (used + d > totalCapacity) continue;
+            schedule.push({ task, startTime: current, endTime: current + d, duration: d });
+            used += d;
+            current += d + 15;
+        }
+        return { schedule, totalUsed: used, totalCapacity };
+    }
+
+    // ---------------- state ----------------
+    function exampleState() {
+        const lines = ['Write project report', "Reply to Sam's email", 'Call the pharmacy', 'Tidy the desk', 'Research flights for May'];
+        const base = 1000;
+        const tasks = lines.map((text, i) => ({
+            id: base + i, text, priority: i === 0 ? 'important' : 'flexible',
+            duration: estimateMinutes(text), energyRequired: estimateEnergy(text), completed: i === 1, dopamine: false
+        }));
+        tasks.push({ id: base + 9, text: 'Listen to favorite playlist', priority: 'flexible', duration: 15, energyRequired: 1, completed: false, dopamine: true });
+        return {
+            tasks, energyLevel: 'medium', communicationMode: 'verbal', workHours: 'flexible', scheduleStartTime: 540,
+            dopamineItems: DEFAULT_REWARDS.map(r => ({ ...r }))
+        };
+    }
+    function load() {
+        try { state = JSON.parse(localStorage.getItem('planergyAppScreens')); } catch (e) { state = null; }
+        if (!state || !state.tasks) state = exampleState();
+    }
+    function save() { try { localStorage.setItem('planergyAppScreens', JSON.stringify(state)); } catch (e) {} }
+    function update(fn) { fn(); save(); renderAll(); }
+    function resetExample() { justAdded = []; update(() => { state = exampleState(); }); }
+    function go(id) { document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+    // ---------------- small pieces ----------------
+    const pips = (lvl, big) => `<span class="pips${big ? ' big' : ''}" aria-hidden="true"><i class="on"></i><i class="${lvl >= 2 ? 'on' : ''}"></i><i class="${lvl >= 3 ? 'on' : ''}"></i></span>`;
+    const effortName = l => ['', 'Low', 'Medium', 'High'][l];
+    const ICON = {
+        star: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>',
+        trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V5h5v2M6.5 7l.9 12.5h9.2L17.5 7"/></svg>',
+        plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+        list: '<svg class="i" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/></svg>',
+        cal: '<svg class="i" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>',
+        spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
+        gear: '<svg class="i" viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h1M10 17h9"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>'
+    };
+    const MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
+    const BRAND = `<svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="8" fill="#1b6e66"/><rect x="6.5" y="14" width="3" height="6" rx="1.2" fill="#fff"/><rect x="11.5" y="10.5" width="3" height="9.5" rx="1.2" fill="#fff"/><rect x="16.5" y="6.5" width="3" height="13.5" rx="1.2" fill="#fff" opacity="0.45"/></svg>Planergy`;
+
+    function budgetBar(schedule, cap) {
+        return `<div class="budget" aria-hidden="true">${schedule.map(s => `<span class="${s.task.completed ? 'done' : ''}" style="width:${s.duration / cap * 100}%"></span>`).join('')}</div>`;
+    }
+    function seg(options, value, onclickFn, small) {
+        return `<div class="seg${small ? ' small' : ''}">${options.map(([v, l]) =>
+            `<button type="button" aria-pressed="${v === value}" onclick="${onclickFn}('${v}')">${l}</button>`).join('')}</div>`;
+    }
+
+    // ---------------- screen 1: onboarding ----------------
+    function renderOnboarding() {
+        const e = state.energyLevel;
+        const caps = { low: '80 min', medium: '2 h', high: '5 h' };
+        document.getElementById('onboarding').innerHTML = `
+            <div class="progress" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></div>
+            <h2 class="greeting">Let's fit today to your energy.</h2>
+            <p class="lede">Three quick questions. You can change them any time.</p>
+
+            <div class="card" style="margin-top: 24px;">
+                <h3>How much energy do you have today?</h3>
+                <div class="choices">
+                    ${['low', 'medium', 'high'].map(l => `
+                        <button type="button" class="choice" aria-pressed="${e === l}" onclick="setEnergy('${l}')">
+                            ${pips(ENERGY_NUM[l], true)}
+                            <strong>${l[0].toUpperCase() + l.slice(1)}</strong>
+                            <span>${caps[l]}</span>
+                        </button>`).join('')}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>How do you work?</h3>
+                ${seg([['nine-to-five', '9 to 5'], ['flexible', 'Flexible']], state.workHours, 'setWorkHours')}
+                ${state.workHours === 'flexible'
+                    ? `<div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
+                         <label class="note" for="startInput">Start my day at</label>
+                         <input id="startInput" class="field num" type="time" step="1800" style="width:auto; min-height:40px; padding:6px 12px; border-radius:999px;"
+                           value="${String(Math.floor(state.scheduleStartTime / 60)).padStart(2, '0')}:${String(state.scheduleStartTime % 60).padStart(2, '0')}"
+                           onchange="setStart(this.value)">
+                       </div>`
+                    : '<p class="note" style="margin-top:10px;">Tasks are placed from 9:00 AM.</p>'}
+            </div>
+
+            <div class="card">
+                <h3>Can you talk today?</h3>
+                ${seg([['verbal', 'Can talk'], ['nonverbal', 'Non-verbal']], state.communicationMode, 'setComm')}
+                <p class="note" style="margin-top:10px;">${state.communicationMode === 'nonverbal'
+                    ? 'Text only today. Calls get flagged so you can move them.'
+                    : 'You can add tasks by voice.'}</p>
+            </div>`;
+    }
+    function setEnergy(l) { update(() => { state.energyLevel = l; }); }
+    function setWorkHours(v) { update(() => { state.workHours = v; }); }
+    function setComm(v) { update(() => { state.communicationMode = v; }); }
+    function setStart(v) { const [h, m] = v.split(':').map(Number); if (!isNaN(h)) update(() => { state.scheduleStartTime = h * 60 + m; }); }
+
+    // ---------------- screen 2: add tasks ----------------
+    function renderAdd() {
+        const verbal = state.communicationMode === 'verbal';
+        const added = justAdded.map(id => state.tasks.find(t => t.id === id)).filter(Boolean);
+        const recent = added.length ? added : state.tasks.slice(-3);
+        const draft = document.getElementById('taskInput') ? document.getElementById('taskInput').value : '';
+        document.getElementById('add').innerHTML = `
+            <h2 class="title">What's on your mind?</h2>
+            <p class="lede">One task per line${verbal ? ', or tap the mic and say them' : ''}. Planergy guesses the time and effort.</p>
+            <div class="composer" style="margin-top: 20px;">
+                <label class="sr-only" for="taskInput">Tasks, one per line</label>
+                <textarea id="taskInput" class="field" placeholder="Reply to Sam's email&#10;Tidy the desk">${escapeHtml(draft)}</textarea>
+                <div class="composer-row">
+                    ${verbal ? `<button type="button" class="mic" id="micBtn" aria-label="Speak tasks" aria-pressed="false" onclick="toggleVoice()">${MIC}</button>` : ''}
+                    <button type="button" class="btn" onclick="addTasks()">Add tasks</button>
+                </div>
+                <p class="note" id="voiceStatus" aria-live="polite" style="margin-top:8px; min-height:18px;"></p>
+            </div>
+            <div class="section-label">${added.length ? 'Just added' : 'Latest tasks'} <span class="count">${recent.length}</span></div>
+            ${recent.length ? `<ul class="rows">${recent.map(t => `
+                <li class="row">
+                    <div class="row-main">
+                        <div class="row-name">${escapeHtml(t.text)}</div>
+                        <div class="row-meta"><span>${t.duration} min</span>${pips(t.energyRequired)}<span>${effortName(t.energyRequired)} effort</span></div>
+                    </div>
+                    <button class="icon-btn" type="button" aria-label="Delete ${escapeHtml(t.text)}" onclick="deleteTask(${t.id})">${ICON.trash}</button>
+                </li>`).join('')}</ul>`
+            : '<p class="empty">Nothing yet. Your tasks show up here as you add them.</p>'}`;
+        document.getElementById('addFooterBtn').textContent = `Review ${state.tasks.length} ${state.tasks.length === 1 ? 'task' : 'tasks'}`;
+        document.getElementById('taskInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTasks(); }
+        });
+    }
+    function addTasks() {
+        const input = document.getElementById('taskInput');
+        const lines = input.value.split(/\n|•/).map(l => l.trim()).filter(Boolean);
+        if (!lines.length) return;
+        input.value = '';
+        const base = Date.now();
+        update(() => {
+            justAdded = [];
+            lines.forEach((text, i) => {
+                state.tasks.push({ id: base + i, text, priority: 'flexible', duration: estimateMinutes(text), energyRequired: estimateEnergy(text), completed: false, dopamine: false });
+                justAdded.push(base + i);
+            });
+        });
+    }
+    function deleteTask(id) { update(() => { state.tasks = state.tasks.filter(t => t.id !== id); }); }
+    function toggleVoice() {
+        const status = document.getElementById('voiceStatus');
+        const btn = document.getElementById('micBtn');
+        if (!('webkitSpeechRecognition' in window)) { status.textContent = 'Voice needs Chrome or Edge here. Type instead.'; return; }
+        if (!recognition) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
+            recognition.onresult = ev => {
+                let text = '';
+                for (let i = 0; i < ev.results.length; i++) text += ev.results[i][0].transcript + '. ';
+                document.getElementById('taskInput').value = text.replace(/\s+and\s+/gi, '\n').trim();
+            };
+            recognition.onend = () => { const b = document.getElementById('micBtn'); if (b) { b.classList.remove('recording'); b.setAttribute('aria-pressed', 'false'); } };
+        }
+        if (btn.classList.contains('recording')) { recognition.stop(); status.textContent = 'Check the list, then add it.'; }
+        else { recognition.start(); btn.classList.add('recording'); btn.setAttribute('aria-pressed', 'true'); status.textContent = 'Listening. Say each task, or join them with "and".'; }
+    }
+
+    // ---------------- screen 3: review ----------------
+    function reviewRow(t) {
+        const flag = state.communicationMode === 'nonverbal' && isVerbalTask(t.text);
+        const important = t.priority === 'important';
+        return `
+            <li class="row ${important ? 'important' : ''} ${flag ? 'flag' : ''}">
+                <div class="row-main">
+                    <div class="row-name">${escapeHtml(t.text)}</div>
+                    <div class="row-meta">
+                        <label class="sr-only" for="dur-${t.id}">Time for ${escapeHtml(t.text)}</label>
+                        <select id="dur-${t.id}" class="num" style="border:0; background:transparent; color:inherit; padding:0; font-size:13px;" onchange="setDuration(${t.id}, this.value)">
+                            ${[5, 10, 15, 20, 30, 45, 60, 90].concat([5, 10, 15, 20, 30, 45, 60, 90].includes(t.duration) ? [] : [t.duration]).sort((a, b) => a - b)
+                                .map(m => `<option value="${m}" ${m === t.duration ? 'selected' : ''}>${m} min</option>`).join('')}
+                        </select>
+                        <button type="button" onclick="cycleEffort(${t.id})" aria-label="Effort ${effortName(t.energyRequired)}. Tap to change." style="border:0; background:transparent; padding:4px; color:inherit; display:inline-flex; gap:6px; align-items:center; cursor:pointer;">${pips(t.energyRequired)} ${effortName(t.energyRequired)}</button>
+                        ${t.dopamine ? '<span class="pill accent">Reward</span>' : ''}
+                        ${flag ? '<span class="pill warning">Needs talking</span>' : ''}
+                    </div>
+                </div>
+                <button class="icon-btn star" type="button" aria-pressed="${important}" aria-label="${important ? 'Make flexible' : 'Make important'}: ${escapeHtml(t.text)}" onclick="togglePriority(${t.id})">${ICON.star}</button>
+            </li>`;
+    }
+    function renderReview() {
+        const { schedule, totalUsed, totalCapacity } = computeSchedule(state.tasks);
+        const waiting = state.tasks.length - schedule.length;
+        const imp = state.tasks.filter(t => t.priority === 'important');
+        const flex = state.tasks.filter(t => t.priority !== 'important');
+        document.getElementById('review').innerHTML = `
+            <h2 class="title">What has to happen today?</h2>
+            <p class="lede">Star the important ones. They're placed first.</p>
+            <div class="card" style="margin-top: 20px;">
+                <div class="budget-row">
+                    <span class="figure">${totalUsed}<small> / ${totalCapacity} min</small></span>
+                    <span class="note">${state.energyLevel[0].toUpperCase() + state.energyLevel.slice(1)} energy</span>
+                </div>
+                ${budgetBar(schedule, totalCapacity)}
+                <p class="note" style="margin-top:8px;">${waiting ? `${waiting} ${waiting === 1 ? 'task waits' : 'tasks wait'} for another day` : 'Everything fits today'}</p>
+            </div>
+            <div class="section-label">Important <span class="count">${imp.length}</span></div>
+            ${imp.length ? `<ul class="rows">${imp.map(reviewRow).join('')}</ul>` : '<p class="empty">Star a task below to place it first.</p>'}
+            <div class="section-label">Flexible <span class="count">${flex.length}</span></div>
+            ${flex.length ? `<ul class="rows">${flex.map(reviewRow).join('')}</ul>` : '<p class="empty">Nothing flexible.</p>'}`;
+    }
+    function togglePriority(id) { update(() => { const t = state.tasks.find(x => x.id === id); t.priority = t.priority === 'important' ? 'flexible' : 'important'; }); }
+    function setDuration(id, v) { update(() => { state.tasks.find(x => x.id === id).duration = parseInt(v, 10); }); }
+    function cycleEffort(id) { update(() => { const t = state.tasks.find(x => x.id === id); t.energyRequired = t.energyRequired % 3 + 1; }); }
+
+    // ---------------- screen 4: day and week ----------------
+    function renderDay(schedule, totalUsed, totalCapacity) {
+        if (!schedule.length) return `<p class="empty" style="margin-top:16px;">${state.tasks.length ? "Nothing fits today's energy. Shorten a task or raise your energy." : 'Add tasks to see your day.'}</p>`;
+        const end = Math.max(state.workHours === 'nine-to-five' ? 17 * 60 : 18 * 60, ...schedule.map(s => s.endTime));
+        const min = Math.floor(startTime() / 60) * 60, max = Math.ceil(end / 60) * 60;
+        let rows = '';
+        for (let t = min; t < max; t += SLOT_MINUTES) rows += `<div class="slot ${t % 60 === 0 ? 'hour' : ''}"><div class="slot-time">${t % 60 === 0 ? formatTime(t) : ''}</div></div>`;
+        const blocks = schedule.map(s => {
+            const t = s.task;
+            const flag = state.communicationMode === 'nonverbal' && isVerbalTask(t.text);
+            const kind = flag ? 'flag' : t.dopamine ? 'dopamine' : t.priority === 'important' ? 'important' : '';
+            const top = (s.startTime - min) / SLOT_MINUTES * ROW_PX + 6 + 2;
+            const h = Math.max(22, s.duration / SLOT_MINUTES * ROW_PX - 4);
+            const two = h >= 40;
+            return `<div class="block ${kind} ${t.completed ? 'done' : ''}" style="top:${top}px; height:${h}px;">
+                <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleDone(${t.id})" aria-label="Mark ${escapeHtml(t.text)} ${t.completed ? 'not done' : 'done'}">
+                <div class="b-text ${two ? 'two' : ''}">
+                    <span class="b-name">${escapeHtml(t.text)}</span>
+                    <span class="b-meta">${two ? `${formatTime(s.startTime)} – ${formatTime(s.endTime)} · ` : ''}${s.duration} min ${flag ? '· Needs talking' : pips(t.energyRequired)}</span>
+                </div>
+            </div>`;
+        }).join('');
+        const done = schedule.filter(s => s.task.completed).length;
+        return `
+            <div class="card" style="margin-top: 16px;">
+                <div class="budget-row"><span class="figure">${totalUsed}<small> / ${totalCapacity} min</small></span><span class="note num">${done} of ${schedule.length} done</span></div>
+                ${budgetBar(schedule, totalCapacity)}
+            </div>
+            <div class="timeline" style="margin-top: 12px;">${rows}${blocks}</div>`;
+    }
+    function renderWeek(schedule, totalUsed, totalCapacity) {
+        // Today is real. Later days take what didn't fit, important first,
+        // assuming medium energy until you check in on that day.
+        const ids = new Set(schedule.map(s => s.task.id));
+        let waiting = state.tasks.filter(t => !ids.has(t.id) && !t.completed)
+            .sort((a, b) => (b.priority === 'important') - (a.priority === 'important'));
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(); date.setDate(date.getDate() + i);
+            const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-GB', { weekday: 'long' });
+            const sub = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+            if (i === 0) { days.push({ label, sub, schedule, used: totalUsed, cap: totalCapacity, today: true }); continue; }
+            const cap = ENERGY_CAPACITY[2];
+            const placed = []; let used = 0; const rest = [];
+            for (const t of waiting) { if (used + t.duration <= cap) { placed.push({ task: t, duration: t.duration }); used += t.duration; } else rest.push(t); }
+            waiting = rest;
+            days.push({ label, sub, schedule: placed, used, cap });
+        }
+        return `
+            <p class="note" style="margin-top:16px;">Later days assume medium energy until you check in that morning.</p>
+            <ul class="week" style="margin-top: 12px;">${days.map(d => `
+                <li class="day ${d.today ? 'today' : ''}">
+                    <div class="day-top"><strong>${d.label}</strong><span class="note">${d.sub}</span><span class="end">${d.used} / ${d.cap} min</span></div>
+                    ${budgetBar(d.schedule, d.cap)}
+                    <p class="day-tasks">${d.schedule.length
+                        ? d.schedule.slice(0, 3).map(s => `<b>${escapeHtml(s.task.text)}</b>`).join(', ') + (d.schedule.length > 3 ? ` and ${d.schedule.length - 3} more` : '')
+                        : 'Free'}</p>
+                </li>`).join('')}</ul>`;
+    }
+    function renderPlan() {
+        const { schedule, totalUsed, totalCapacity } = computeSchedule(state.tasks);
+        const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+        document.getElementById('plan').innerHTML = `
+            <h2 class="title">${planView === 'day' ? 'Today' : 'Next 7 days'}</h2>
+            <p class="lede">${planView === 'day' ? `${today}. Tick tasks off as you go.` : "What didn't fit today, rolled forward."}</p>
+            <div style="margin-top: 16px;">${seg([['day', 'Day'], ['week', 'Week']], planView, 'setPlanView')}</div>
+            ${planView === 'day' ? renderDay(schedule, totalUsed, totalCapacity) : renderWeek(schedule, totalUsed, totalCapacity)}`;
+    }
+    function setPlanView(v) { planView = v; renderPlan(); }
+    function toggleDone(id) { update(() => { const t = state.tasks.find(x => x.id === id); t.completed = !t.completed; }); }
+
+    // ---------------- screen 5: dopamine menu ----------------
+    function renderRewards() {
+        const { totalUsed, totalCapacity } = computeSchedule(state.tasks);
+        const free = totalCapacity - totalUsed;
+        const groups = [[10, 'Quick, 10 min or less'], [15, 'Short, about 15 min'], [Infinity, 'Longer']];
+        let lower = 0;
+        const html = groups.map(([upto, label]) => {
+            const items = state.dopamineItems.filter(r => r.duration > lower && r.duration <= upto);
+            lower = upto;
+            if (!items.length) return '';
+            return `<div class="reward-group">
+                <div class="section-label" style="margin-top:0;">${label} <span class="count">${items.length}</span></div>
+                <ul class="rows">${items.map(r => {
+                    const fits = r.duration <= free;
+                    return `<li class="row reward">
+                        <div class="row-main">
+                            <div class="row-name">${escapeHtml(r.text)}</div>
+                            <div class="row-meta"><span>${r.duration} min</span><span class="${fits ? 'fits' : ''}">${fits ? 'Fits today' : 'Over today\'s energy'}</span></div>
+                        </div>
+                        <button class="btn btn-small" type="button" id="add-${r.id}" onclick="addReward('${r.id}')" aria-label="Add ${escapeHtml(r.text)} to today">Add</button>
+                    </li>`;
+                }).join('')}</ul>
+            </div>`;
+        }).join('');
+        document.getElementById('rewards').innerHTML = `
+            <h2 class="title">Dopamine menu</h2>
+            <p class="lede">Small rewards for between tasks. <strong>${free > 0 ? `${free} min` : 'No time'}</strong> ${free > 0 ? 'of energy left today.' : 'left in today\'s energy.'}</p>
+            <form style="display:flex; gap:8px; margin: 20px 0 24px;" onsubmit="event.preventDefault(); addOwnReward();">
+                <label class="sr-only" for="ownReward">Your own reward</label>
+                <input id="ownReward" class="field" placeholder="Add your own" style="border-radius:999px; min-height:44px; padding:0 16px;">
+                <button class="icon-btn" type="submit" aria-label="Add reward" style="background:var(--primary); color:#fff;">${ICON.plus}</button>
+            </form>
+            ${html || '<p class="empty">No rewards yet. Add one that gives you a lift.</p>'}`;
+    }
+    function addReward(id) {
+        const r = state.dopamineItems.find(x => x.id === id);
+        update(() => { state.tasks.push({ id: Date.now(), text: r.text, priority: 'flexible', duration: r.duration, energyRequired: 1, completed: false, dopamine: true }); });
+        const b = document.getElementById('add-' + id);
+        if (b) { b.textContent = 'Added'; b.style.borderColor = 'var(--accent)'; b.style.color = 'var(--accent)'; }
+    }
+    function addOwnReward() {
+        const input = document.getElementById('ownReward');
+        const text = input.value.trim();
+        if (!text) return;
+        update(() => { state.dopamineItems.unshift({ id: 'custom-' + Date.now(), text, duration: 15, custom: true }); });
+    }
+
+    // ---------------- shared chrome ----------------
+    function renderChrome() {
+        document.querySelectorAll('[data-brand]').forEach(el => { el.innerHTML = BRAND; });
+        const tabs = [['s-add', 'Add', ICON.plus], ['s-review', 'Review', ICON.list], ['s-plan', 'Plan', ICON.cal], ['s-rewards', 'Rewards', ICON.spark]];
+        document.querySelectorAll('[data-tabs]').forEach(nav => {
+            const current = nav.dataset.tabs;
+            nav.innerHTML = tabs.map(([id, label, icon]) =>
+                `<button class="tab" type="button" ${id === current ? 'aria-current="page"' : ''} onclick="go('${id}')"><span class="tab-icon">${icon}</span>${label}</button>`).join('');
+        });
+    }
+
+    function renderAll() {
+        renderOnboarding();
+        renderAdd();
+        renderReview();
+        renderPlan();
+        renderRewards();
+    }
+
+    load();
+    renderChrome();
+    renderAll();
+</script>
+</body>
+</html>
